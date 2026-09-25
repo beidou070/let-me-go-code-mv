@@ -1,0 +1,1381 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; }
+        #ch4-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-sgwg" id="root" data-composition-id="ch4" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-zk2u" id="ch4-canvas" data-layout-allow-overflow="true" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+        (function () {
+          /* Chapter 4 — verse B (37.681 – 52.029)
+           * 4a 37.68–41.64 "The bass goes walking, the cursor slides"  the bass walks a music staff (one step = one note per beat);
+           *                she skates in on a giant text caret that types a trail of code which floats off as notes; kickflip on 40.84
+           * 4b 41.64–45.14 "I'm chasing endpoints through neon lights" neon alley rushing past; winged endpoint signs flee;
+           *                /v1/chat and /tools dodge her grabs, she catches /sing on the downbeat 44.56
+           * 4c 45.14–48.49 "If the answer's late, I'll pour some wine"  bar counter, a loading spinner hangs as the lamp; she high-pours,
+           *                the spinner's dots spiral down and become the swirl in her glass; smug "take your time"
+           * 4d 48.49–52.03 "And let the error swing in four-four time"  ERROR bug pops up angry; she grabs its hand and they swing;
+           *                1·2·3·4 slam on the beats; on 3 it turns pink "OK ♥", on 4 they strike a pose
+           */
+          const L = LIB, C = CAST, P = L.P;
+          const ID = "ch4", T0 = 37.681, T1 = 52.029;
+          const TAU = Math.PI * 2;
+          const NOTE_COLS = [P.cyan, P.pink, P.json, P.mint];
+          const frac = (v) => v - Math.floor(v);
+          // her rig (v2 keeps the open eye of a wink open whatever the groove's blink says, so no wink/blink guard needed)
+          const fish = (ctx, p) => C.fish(ctx, p);
+          // her rig's colours for the little fists drawn over props she grips
+          const SKIN = "#fef5ea", SKIN_SH = "#f6dcd2", INK = "#1a1626";
+          const fist = (ctx, x, y, s, ang = 0) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            ctx.scale(s, s);
+            L.circle(ctx, 0, 0, 10.5);
+            ctx.fillStyle = SKIN;
+            ctx.fill();
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = INK;
+            ctx.stroke();
+            ctx.fillStyle = SKIN_SH;
+            ctx.beginPath();
+            ctx.arc(0, 0, 9.7, -0.2, 1.9);
+            ctx.quadraticCurveTo(2.8, 3.4, 9.6, -1.6);
+            ctx.fill();
+            ctx.strokeStyle = "rgba(122,58,62,0.45)";
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            for (const fx of [-3, 0.2, 3.4]) {
+              ctx.moveTo(fx, 4);
+              ctx.lineTo(fx + 0.3, 7.6);
+            }
+            ctx.stroke();
+            ctx.restore();
+          };
+
+          /* =====================================================================
+           * 4a — the bass goes walking, the cursor slides
+           * ===================================================================== */
+          const A0 = T0, A1 = 41.641;
+          const SPD = 240, BASS_X = 690, GROUND = 900;
+          const WALK = [0, 2, 4, 5, 7, 5, 4, 2, 1, 3, 5, 6, 8, 6, 5, 3];
+          const staffY = (p) => 890 - p * 15;
+          const TYPED = "the_cursor_slides(); let_me_go(); swing(4/4); ";
+          const CW = 30;
+          const EN0 = 39.0, EN1 = 39.451;
+          const boardX = (t) => L.kf(t, [[EN0, -420], [EN1, 1250, "outCubic"]]);
+          const OL0 = 40.38, OL1 = 41.285;
+          const ollieU = (t) => L.seg(t, OL0, OL1);
+          const ollieH = (t) => {
+            const u = ollieU(t);
+            return u > 0 && u < 1 ? 210 * 4 * u * (1 - u) : 0;
+          };
+
+          const caretBoard = (ctx, x, y, t, flip) => {
+            const bright = 0.35 + 0.65 * L.pulse(t, 4);
+            L.glow(ctx, x, y - 10, 320, P.cyan, 0.14 + 0.2 * bright);
+            ctx.save();
+            ctx.translate(x, y);
+            const fy = Math.abs(flip) < 0.1 ? (flip < 0 ? -0.1 : 0.1) : flip;
+            ctx.scale(1, fy);
+            ctx.lineJoin = "round";
+            // trucks + wheels
+            for (const wx of [-100, 100]) {
+              ctx.fillStyle = "#8a93b8";
+              ctx.fillRect(wx - 18, 10, 36, 10);
+              L.circle(ctx, wx, 30, 14);
+              ctx.fillStyle = P.night2;
+              ctx.fill();
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              L.circle(ctx, wx, 30, 5);
+              ctx.fillStyle = P.cyan;
+              ctx.fill();
+            }
+            // the I-beam text caret, lying on its side
+            const col = L.mixColor("#2aa6c4", "#eefeff", bright);
+            ctx.fillStyle = col;
+            ctx.strokeStyle = P.ink;
+            ctx.lineWidth = 5;
+            L.rr(ctx, -162, -12, 324, 24, 6);
+            ctx.fill();
+            ctx.stroke();
+            for (const sx of [-1, 1]) {
+              L.rr(ctx, sx * 170 - 9, -40, 18, 80, 7);
+              ctx.fill();
+              ctx.stroke();
+            }
+            ctx.fillStyle = "rgba(255,255,255,0.75)";
+            ctx.fillRect(-150, -7, 300, 4);
+            ctx.restore();
+          };
+
+          const street = (ctx, t, scroll) => {
+            // lamp posts (ground speed) — warm light pools behind the cast
+            for (let k = Math.floor((scroll - 400) / 620); k < Math.floor((scroll + 2400) / 620); k++) {
+              const x = k * 620 + 150 - scroll;
+              if (x < -200 || x > 2200) continue;
+              L.glow(ctx, x, 470, 260, P.amber, 0.22);
+              ctx.fillStyle = "#1d1a44";
+              ctx.fillRect(x - 7, 470, 14, 430);
+              ctx.fillStyle = "#2c2860";
+              L.rr(ctx, x - 26, 450, 52, 28, 8);
+              ctx.fill();
+              ctx.fillStyle = "#ffe3a0";
+              L.ellipse(ctx, x, 482, 18, 8);
+              ctx.fill();
+            }
+            // pavement
+            const g = ctx.createLinearGradient(0, GROUND, 0, 1200);
+            g.addColorStop(0, "#241a52");
+            g.addColorStop(1, "#0a0a22");
+            ctx.fillStyle = g;
+            ctx.fillRect(-400, GROUND, 2800, 400);
+            ctx.fillStyle = P.gold;
+            ctx.fillRect(-400, GROUND - 2, 2800, 4);
+            // the music staff running along the street
+            ctx.save();
+            ctx.strokeStyle = L.rgba("#bfe6ff", 0.42);
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 5; i++) {
+              ctx.beginPath();
+              ctx.moveTo(-400, 770 + i * 30);
+              ctx.lineTo(2400, 770 + i * 30);
+              ctx.stroke();
+            }
+            // bar lines on every downbeat
+            for (const db of L.DOWNBEATS) {
+              if (db > t + 0.01 || db < t - 12) continue;
+              const x = BASS_X - (t - db) * SPD;
+              ctx.strokeStyle = L.rgba("#bfe6ff", 0.55);
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(x, 770);
+              ctx.lineTo(x, 890);
+              ctx.stroke();
+            }
+            ctx.restore();
+          };
+
+          // one note head per bass step, left on the staff and scrolling away
+          const stepNotes = (ctx, t) => {
+            const b1 = L.beatIndex(t);
+            for (let b = b1 - 14; b <= b1; b++) {
+              const bt = L.beatTime(b);
+              const age = t - bt;
+              if (age < 0) continue;
+              const x = BASS_X + (b % 2 ? 26 : -26) - age * SPD;
+              if (x < -120) continue;
+              const p = WALK[((b % 16) + 16) % 16];
+              const y = staffY(p);
+              const pop = L.ease.outBack(L.seg(age, 0, 0.22));
+              const fresh = Math.exp(-age * 3);
+              const col = NOTE_COLS[((b % 4) + 4) % 4];
+              if (fresh > 0.05) L.glow(ctx, x, y, 90 * fresh + 20, col, 0.5 * fresh);
+              ctx.save();
+              ctx.translate(x, y);
+              ctx.scale(pop, pop);
+              L.ellipse(ctx, 0, 0, 17, 12, -0.4);
+              ctx.fillStyle = col;
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.strokeStyle = col;
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(14, -4);
+              ctx.lineTo(14, -62);
+              ctx.stroke();
+              ctx.restore();
+            }
+          };
+
+          const typedTrail = (ctx, t, scroll, bx, viewL) => {
+            if (t < EN0) return;
+            const gTail = bx - 190 + scroll;
+            const gStart = boardX(EN0) - 190 + (EN0 - A0) * SPD;
+            ctx.save();
+            ctx.font = `700 46px "${L.FONT.mono}", monospace`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            for (let i = 0; i < 200; i++) {
+              const g = gStart + i * CW;
+              const dist = gTail - g;
+              if (dist < 0) break;
+              const x = g - scroll;
+              if (x < viewL - 60 || dist > 950) continue;
+              const ch = TYPED[i % TYPED.length];
+              if (ch === " ") continue;
+              const rise = Math.max(0, dist - 170) * 0.62;
+              const y = 832 - rise + Math.sin(i * 1.7 + t * 5) * Math.min(12, rise * 0.1);
+              const morph = L.seg(dist, 380, 540);
+              const a = 1 - L.seg(dist, 740, 950);
+              if (morph < 1) {
+                ctx.globalAlpha = a * (1 - morph);
+                ctx.lineWidth = 7;
+                ctx.strokeStyle = P.ink;
+                ctx.strokeText(ch, x, y);
+                ctx.fillStyle = dist < 60 ? "#ffffff" : L.mixColor("#ffffff", P.cyan, L.seg(dist, 60, 300));
+                ctx.fillText(ch, x, y);
+              }
+              if (morph > 0 && i % 2 === 0) {
+                ctx.globalAlpha = a;
+                L.note(ctx, x, y + 10, 40 * L.ease.outBack(morph), NOTE_COLS[i % 4], i % 3 === 0, Math.sin(t * 4 + i) * 0.3);
+              }
+            }
+            ctx.restore();
+            // blinking insertion bar right at the tail of the board
+          };
+
+          const shotA = (ctx, t) => {
+            const scroll = (t - A0) * SPD;
+            L.nightSky(ctx, t, { stars: 80, horizon: "#2b2f86", starFloor: 0.55 });
+            const zoom = L.kf(t, [[A0, 1.26], [39.05, 1.17, "inOutSine"], [39.75, 1.0, "outCubic"]]) + 0.025 * L.barPulse(t, 6);
+            const cx = L.kf(t, [[A0, 720], [39.05, 790, "inOutSine"], [39.75, 960, "outCubic"]]);
+            const cy = L.kf(t, [[A0, 660], [39.75, 560, "outCubic"]]);
+            L.cam(ctx, { zoom, x: cx, y: cy });
+            const viewL = cx - 960 / zoom;
+            C.moon(ctx, 1560, 200, 70);
+            C.city(ctx, t, { y: 790, scroll: scroll * 0.45, layers: 2, lit: 0.22, keys: true });
+            {
+              const hz = ctx.createLinearGradient(0, 300, 0, 900);
+              hz.addColorStop(0, "rgba(13,21,56,0)");
+              hz.addColorStop(1, "rgba(13,21,56,0.55)");
+              ctx.fillStyle = hz;
+              ctx.fillRect(-400, 300, 2800, 600);
+            }
+            // sky speed streaks
+            ctx.save();
+            ctx.strokeStyle = "rgba(220,235,255,0.22)";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < 9; i++) {
+              const y = 150 + L.hash(i * 3.7) * 420;
+              const x = 2300 - frac(t * 0.9 + L.hash(i)) * 2800;
+              ctx.beginPath();
+              ctx.moveTo(x, y);
+              ctx.lineTo(x + 140 + 120 * L.hash(i * 9), y);
+              ctx.stroke();
+            }
+            ctx.restore();
+            street(ctx, t, scroll);
+            stepNotes(ctx, t);
+            const bx = boardX(t);
+            typedTrail(ctx, t, scroll, bx, viewL);
+
+            // the walking upright bass: one step per beat, plucks itself on the beat
+            L.glow(ctx, BASS_X, 680, 420, P.amber, 0.2);
+            C.bass(ctx, BASS_X, GROUND - 12 * L.hop(t), 1.02, { phase: L.bp(t) / 2, pluck: L.pulse(t, 5), t });
+            // notes puffing out of the scroll on each step
+            const b1 = L.beatIndex(t);
+            for (let b = b1 - 4; b <= b1; b++) {
+              const age = t - L.beatTime(b);
+              if (age < 0 || age > 2.2) continue;
+              ctx.save();
+              ctx.globalAlpha = 1 - age / 2.2;
+              L.note(ctx, BASS_X + 50 - age * SPD * 0.45 + Math.sin(age * 4 + b) * 18, 470 - age * 150, 40 * L.ease.outBack(L.seg(age, 0, 0.25)), NOTE_COLS[((b % 4) + 4) % 4], b % 3 === 0, Math.sin(age * 3) * 0.3);
+              ctx.restore();
+            }
+
+            // her, on the caret skateboard
+            if (t >= EN0) {
+              const u = ollieU(t);
+              const air = u > 0 && u < 1;
+              const j = ollieH(t);
+              const flipA = air ? L.ease.inOutSine(L.seg(u, 0.12, 0.78)) * TAU : 0;
+              const entering = t < EN1 + 0.08;
+              // entry speed streaks
+              const streak = 1 - L.seg(t, EN1, EN1 + 0.35);
+              if (streak > 0) {
+                ctx.save();
+                ctx.globalAlpha = streak * 0.7;
+                ctx.strokeStyle = "#dff9ff";
+                ctx.lineCap = "round";
+                for (let k = 0; k < 7; k++) {
+                  const yy = 520 + k * 50;
+                  const len = 300 + 260 * L.hash(k * 5);
+                  ctx.lineWidth = 6 - k * 0.4;
+                  ctx.beginPath();
+                  ctx.moveTo(bx - 190 - 40 * L.hash(k), yy);
+                  ctx.lineTo(bx - 190 - len, yy);
+                  ctx.stroke();
+                }
+                ctx.restore();
+              }
+              const boardY = 856 - j * 0.9;
+              caretBoard(ctx, bx, boardY, t, Math.cos(flipA));
+              const land = L.seg(t, OL1, OL1 + 0.22);
+              const g = C.groove(t, "swing", 0.5);
+              const sway = L.sway(t);
+              fish(ctx, {
+                ...g,
+                x: bx,
+                y: 846 - j,
+                s: 1.22,
+                dy: 0,
+                rot: entering ? -0.14 : air ? 0.1 * Math.sin(u * TAU) : g.rot,
+                sq: entering ? 1.08 : land > 0 && land < 1 ? 1 + 0.14 * Math.sin(land * Math.PI) : g.sq,
+                face: air ? "wink" : entering ? "happy" : "sing",
+                sparkle: air,
+                mouth: air ? 0.7 : entering ? 0.5 : 0.3 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+                lArm: 32, lBend: 135, lHold: "mic",
+                rArm: air ? 168 : entering ? 60 : 100 + sway * 16, rBend: air ? 0 : entering ? 40 : 18,
+                legL: air ? 38 : 14, legR: air ? 38 : 14,
+                hair: entering ? -1 : -0.55 + 0.3 * sway,
+                ears: entering ? -25 : g.ears,
+                tail: 20 * Math.sin(t * 6),
+                blush: air ? 1.3 : 1,
+              });
+              // kickflip peak sparkle on the downbeat 40.84
+              const pk = L.seg(t, 40.8, 41.2);
+              if (pk > 0 && pk < 1) {
+                for (let i = 0; i < 8; i++) {
+                  const a = (i / 8) * TAU + 0.3;
+                  L.sparkle(ctx, bx + Math.cos(a) * (140 + 170 * pk), 660 - j + Math.sin(a) * (100 + 120 * pk), 24 * (1 - pk), i % 2 ? P.cyan : P.json);
+                }
+              }
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 4b — chasing endpoints through neon lights (camera retreats down an alley)
+           * ===================================================================== */
+          const B0 = 41.641, B1 = 45.144;
+          const VPX = 960, VPY = 500, FOC = 420, WX = 720, FY = 520, WTOP = -1100, ZN = 110, ZR = 3000, ZF = ZN + ZR, VZ = 1700;
+          const pr = (X, Y, Z) => [VPX + (X * FOC) / Z, VPY + (Y * FOC) / Z];
+          const SIGN_TEXT = ["JAZZ", "BAR", "OPEN", "LIVE", "API", "24H", "SWING", "BLUES", "HOTEL", "DINER", "CLUB", "BOP"];
+          const SIGN_COL = [P.pink, P.cyan, P.amber, P.mint, P.violet, P.pink, P.cyan, P.amber];
+          const SIGNS = SIGN_TEXT.map((txt, i) => ({
+            txt,
+            side: i % 2 ? 1 : -1,
+            vert: i % 3 === 1,
+            Y: -560 + L.hash(i * 4.3) * 380,
+            z0: (i / SIGN_TEXT.length) * ZR,
+            col: SIGN_COL[i % SIGN_COL.length],
+          }));
+
+          const cheapNeon = (ctx, str, x, y, size, col, on = 1, font = L.FONT.block) => {
+            ctx.save();
+            ctx.font = `400 ${size}px "${font}", sans-serif`;
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = L.rgba(col, 0.28 * on + 0.08);
+            ctx.lineWidth = size * 0.3;
+            ctx.strokeText(str, x, y);
+            ctx.strokeStyle = L.rgba(col, 0.25 + 0.75 * on);
+            ctx.lineWidth = size * 0.1;
+            ctx.strokeText(str, x, y);
+            ctx.fillStyle = on > 0.5 ? L.mixColor(col, "#ffffff", 0.7) : L.rgba(col, 0.4);
+            ctx.fillText(str, x, y);
+            ctx.restore();
+          };
+
+          const alley = (ctx, t) => {
+            const lt = t - B0;
+            ctx.fillStyle = "#0a0d2a";
+            ctx.fillRect(-100, -100, 2120, 1280);
+            // the strip of night sky between the rooftops (only this wedge is visible, so only it gets the gradient)
+            {
+              const tl = pr(-WX, WTOP, 70), tr = pr(WX, WTOP, 70), fl = pr(-WX, WTOP, ZF), fr = pr(WX, WTOP, ZF);
+              const bg = ctx.createRadialGradient(VPX, VPY - 30, 20, VPX, VPY - 30, 700);
+              bg.addColorStop(0, "#c04a9a");
+              bg.addColorStop(0.35, "#3a1a5e");
+              bg.addColorStop(1, "#0a0d2a");
+              ctx.fillStyle = bg;
+              ctx.beginPath();
+              ctx.moveTo(tl[0], tl[1]);
+              ctx.lineTo(tr[0], tr[1]);
+              ctx.lineTo(fr[0], fr[1]);
+              ctx.lineTo(fl[0], fl[1]);
+              ctx.closePath();
+              ctx.fill();
+              for (let i = 0; i < 14; i++) {
+                const sx = VPX + (L.hash(i * 3.3) - 0.5) * 600 * (1 - L.hash(i * 5.1) * 0.6), sy = 20 + L.hash(i * 5.1) * 300;
+                L.sparkle(ctx, sx, sy, 3 + 4 * (0.5 + 0.5 * Math.sin(t * 3 + i)), "#e8f0ff", 0.8);
+              }
+            }
+            // the far end of the alley: a hot neon haze
+            const f0 = pr(-WX, WTOP, ZF), f1 = pr(WX, FY, ZF);
+            const hg = ctx.createLinearGradient(0, f0[1], 0, f1[1]);
+            hg.addColorStop(0, "#3a1a6a");
+            hg.addColorStop(0.6, "#ff5fae");
+            hg.addColorStop(1, "#ffd0f0");
+            ctx.fillStyle = hg;
+            ctx.fillRect(f0[0], f0[1], f1[0] - f0[0], f1[1] - f0[1]);
+            L.glow(ctx, VPX, VPY - 30, 400, P.pink, 0.4);
+            // walls
+            for (const side of [-1, 1]) {
+              const a = pr(side * WX, WTOP, 40), b = pr(side * WX, WTOP, ZF), c = pr(side * WX, FY, ZF), d = pr(side * WX, FY, 40);
+              const wg = ctx.createLinearGradient(side < 0 ? 0 : 1920, 0, b[0], 0);
+              wg.addColorStop(0, "#0d0a24");
+              wg.addColorStop(1, "#3d2266");
+              ctx.fillStyle = wg;
+              ctx.beginPath();
+              ctx.moveTo(a[0], a[1]);
+              ctx.lineTo(b[0], b[1]);
+              ctx.lineTo(c[0], c[1]);
+              ctx.lineTo(d[0], d[1]);
+              ctx.closePath();
+              ctx.fill();
+              // brick courses converge on the vanishing point
+              ctx.strokeStyle = "rgba(0,0,0,0.28)";
+              ctx.lineWidth = 2;
+              for (let Y = WTOP + 60; Y < FY; Y += 70) {
+                const p0 = pr(side * WX, Y, 60), p1 = pr(side * WX, Y, ZF);
+                ctx.beginPath();
+                ctx.moveTo(p0[0], p0[1]);
+                ctx.lineTo(p1[0], p1[1]);
+                ctx.stroke();
+              }
+              // passing drainpipes / seams
+              for (let i = 0; i < 9; i++) {
+                const z = ZN + frac((i * ZR) / 9 / ZR + (lt * VZ) / ZR + (side > 0 ? 0.05 : 0)) * ZR;
+                const p0 = pr(side * WX, WTOP, z), p1 = pr(side * WX, FY, z);
+                ctx.strokeStyle = "rgba(4,4,20,0.55)";
+                ctx.lineWidth = (26 * FOC) / z;
+                ctx.beginPath();
+                ctx.moveTo(p0[0], p0[1]);
+                ctx.lineTo(p1[0], p1[1]);
+                ctx.stroke();
+              }
+            }
+            // wet floor
+            {
+              const a = pr(-WX, FY, 40), b = pr(-WX, FY, ZF), c = pr(WX, FY, ZF), d = pr(WX, FY, 40);
+              const fg = ctx.createLinearGradient(0, b[1], 0, 1080);
+              fg.addColorStop(0, "#5a2a78");
+              fg.addColorStop(0.25, "#23154a");
+              fg.addColorStop(1, "#080a1e");
+              ctx.fillStyle = fg;
+              ctx.beginPath();
+              ctx.moveTo(a[0], a[1]);
+              ctx.lineTo(b[0], b[1]);
+              ctx.lineTo(c[0], c[1]);
+              ctx.lineTo(d[0], d[1]);
+              ctx.closePath();
+              ctx.fill();
+              // centre dashes rushing away
+              for (let i = 0; i < 10; i++) {
+                const z = ZN + frac(i / 10 + (lt * VZ) / ZR) * ZR;
+                const p0 = pr(-14, FY, z), p1 = pr(14, FY, z), p2 = pr(14, FY, z + 120), p3 = pr(-14, FY, z + 120);
+                ctx.fillStyle = L.rgba(P.amber, 0.55 * (1 - z / ZF));
+                ctx.beginPath();
+                ctx.moveTo(p0[0], p0[1]);
+                ctx.lineTo(p1[0], p1[1]);
+                ctx.lineTo(p2[0], p2[1]);
+                ctx.lineTo(p3[0], p3[1]);
+                ctx.closePath();
+                ctx.fill();
+              }
+            }
+            // blade signs sticking out of the walls, far to near
+            const list = SIGNS.map((s) => ({ ...s, z: ZN + frac(s.z0 / ZR + (lt * VZ) / ZR) * ZR })).sort((a, b) => b.z - a.z);
+            const bi = L.beatIndex(t);
+            for (const s of list) {
+              const k = FOC / s.z;
+              const w = s.vert ? 110 : 300, h = s.vert ? 330 : 120;
+              const X = s.side * (WX - 40 - w / 2);
+              const [x, y] = pr(X, s.Y, s.z);
+              const fade = 1 - L.seg(s.z, ZF - 700, ZF);
+              if (x < -w * k || x > 1920 + w * k) continue;
+              const flick = (bi + s.txt.length) % 5 === 0 ? 0.35 + 0.65 * (1 - L.pulse(t, 14)) : 1;
+              ctx.save();
+              ctx.globalAlpha = fade;
+              // floor reflection
+              const fl = pr(X, FY, s.z);
+              if (fl[1] < 1080) {
+                const rg = ctx.createLinearGradient(0, fl[1], 0, fl[1] + 260 * k);
+                rg.addColorStop(0, L.rgba(s.col, 0.22 * flick));
+                rg.addColorStop(1, L.rgba(s.col, 0));
+                ctx.fillStyle = rg;
+                ctx.fillRect(x - w * k * 0.18, fl[1], w * k * 0.36, Math.min(260 * k, 1080 - fl[1]));
+              }
+              if (k > 0.45) L.glow(ctx, x, y, Math.min(Math.max(w, h) * k * 0.9, 150), s.col, 0.3 * flick);
+              // bracket
+              const br = pr(s.side * WX, s.Y - h / 2 - 16, s.z);
+              ctx.strokeStyle = "#141030";
+              ctx.lineWidth = 8 * k;
+              ctx.beginPath();
+              ctx.moveTo(br[0], br[1]);
+              ctx.lineTo(x - (s.side * w * k) / 2, y - (h * k) / 2 - 16 * k);
+              ctx.stroke();
+              L.rr(ctx, x - (w * k) / 2, y - (h * k) / 2, w * k, h * k, 18 * k);
+              ctx.fillStyle = "#0c0a26";
+              ctx.fill();
+              ctx.lineWidth = 7 * k;
+              ctx.strokeStyle = L.rgba(s.col, 0.35 + 0.65 * flick);
+              ctx.stroke();
+              if (s.vert) {
+                const chars = s.txt.split("").slice(0, 4);
+                const step = (h * k) / (chars.length + 0.4);
+                chars.forEach((c, ci) => cheapNeon(ctx, c, x, y - (h * k) / 2 + step * (ci + 0.7), 62 * k, s.col, flick));
+              } else {
+                cheapNeon(ctx, s.txt, x, y + 4 * k, 66 * k, s.col, flick);
+              }
+              ctx.restore();
+            }
+            // speed streaks sucked toward the vanishing point
+            ctx.save();
+            ctx.lineCap = "round";
+            for (let i = 0; i < 34; i++) {
+              const a = L.hash(i * 2.3) * TAU;
+              const ph = frac(t * 1.7 + L.hash(i * 7.1));
+              const r = 170 + 1250 * (1 - ph);
+              const len = 60 + r * 0.28;
+              ctx.strokeStyle = L.rgba(i % 3 ? "#e8f4ff" : P.cyan, 0.32 * ph);
+              ctx.lineWidth = 2 + 3 * (1 - ph);
+              ctx.beginPath();
+              ctx.moveTo(VPX + Math.cos(a) * r, VPY + Math.sin(a) * r * 0.8);
+              ctx.lineTo(VPX + Math.cos(a) * (r + len), VPY + Math.sin(a) * (r + len) * 0.8);
+              ctx.stroke();
+            }
+            ctx.restore();
+          };
+
+          // winged endpoint sign critter
+          const endpoint = (ctx, x, y, s, label, col, t, o = {}) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(o.rot || 0);
+            ctx.scale(s, s);
+            ctx.font = `700 46px "${L.FONT.mono}", monospace`;
+            const tw = ctx.measureText(label).width;
+            const w = tw + 124, h = 88;
+            // flapping wings
+            const flap = Math.sin(t * 34 + (o.seed || 0)) * 0.6;
+            for (const sx of [-1, 1]) {
+              ctx.save();
+              ctx.translate(sx * (w / 2 - 10), -14);
+              ctx.rotate(sx * (-0.35 + flap));
+              ctx.beginPath();
+              ctx.moveTo(0, 0);
+              ctx.bezierCurveTo(sx * 20, -46, sx * 70, -52, sx * 84, -30);
+              ctx.quadraticCurveTo(sx * 62, -22, sx * 70, -8);
+              ctx.quadraticCurveTo(sx * 44, -6, sx * 48, 8);
+              ctx.quadraticCurveTo(sx * 24, 10, 0, 0);
+              ctx.closePath();
+              ctx.fillStyle = "#f4f7ff";
+              ctx.fill();
+              ctx.lineWidth = 4;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.restore();
+            }
+            // board
+            L.rr(ctx, -w / 2, -h / 2, w, h, 24);
+            ctx.fillStyle = "#0b0f2c";
+            ctx.fill();
+            ctx.lineWidth = 14;
+            ctx.strokeStyle = L.rgba(col, 0.3);
+            ctx.stroke();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = col;
+            ctx.stroke();
+            ctx.lineWidth = 1.8;
+            ctx.strokeStyle = "#fff";
+            ctx.stroke();
+            // little scared eyes, peeking back at her
+            const ex0 = -w / 2 + 36;
+            for (const ex of [ex0 - 11, ex0 + 11]) {
+              L.ellipse(ctx, ex, 0, 8.5, 12);
+              ctx.fillStyle = "#fff";
+              ctx.fill();
+              ctx.fillStyle = P.ink;
+              L.circle(ctx, ex + (o.lookX || 0) * 3, (o.lookY === undefined ? 3 : o.lookY * 4), 4.8);
+              ctx.fill();
+            }
+            // label
+            ctx.font = `700 46px "${L.FONT.mono}", monospace`;
+            ctx.textAlign = "left";
+            ctx.textBaseline = "middle";
+            ctx.lineJoin = "round";
+            ctx.strokeStyle = L.rgba(col, 0.55);
+            ctx.lineWidth = 10;
+            ctx.strokeText(label, -w / 2 + 66, 3);
+            ctx.fillStyle = L.mixColor(col, "#ffffff", 0.6);
+            ctx.fillText(label, -w / 2 + 66, 3);
+            if (o.sweat) {
+              ctx.globalAlpha *= o.sweat;
+              ctx.beginPath();
+              ctx.moveTo(w / 2 - 8, -h / 2 - 30);
+              ctx.quadraticCurveTo(w / 2 - 20, -h / 2 - 6, w / 2 - 8, -h / 2 - 2);
+              ctx.quadraticCurveTo(w / 2 + 4, -h / 2 - 6, w / 2 - 8, -h / 2 - 30);
+              ctx.fillStyle = "#bfe8ff";
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+            }
+            ctx.restore();
+          };
+
+          const DART1 = 42.678, DART2 = 43.63, CATCH = 44.559;
+          const shotB = (ctx, t) => {
+            const push = L.ep(t, 44.2, 44.75, "inOutCubic");
+            const zoom = 1.03 + 0.03 * L.barPulse(t, 6) + 0.01 * Math.sin(L.bp(t) * TAU) + 0.16 * push;
+            L.cam(ctx, { zoom, x: 960, y: L.lerp(560, 470, push), shake: 3 + 7 * L.barPulse(t, 8), t });
+            alley(ctx, t);
+            // run cycle: two strides per beat
+            const ph = L.bp(t) * TAU;
+            const sn = Math.sin(ph);
+            const x = 960 + Math.sin(t * 2.3) * 40;
+            let y = 905 - Math.abs(sn) * 24;
+            const pose = {
+              legL: Math.max(0, sn) * 46, legR: Math.max(0, -sn) * 46,
+              lArm: 45 - sn * 38, rArm: 45 + sn * 38, lBend: 85, rBend: 85,
+              hair: -0.2 + sn * 0.5, tail: sn * 26, ears: -18 + Math.sin(ph * 2) * 10,
+              rot: 0, sq: 1, ahoge: sn,
+            };
+            let face = "determined", mouth = 0.45, look = [0, -0.3], sweat = 0, sparkle = false, blush = 1;
+            if (t < 42.3) look = [-1, -0.6];
+            else if (t < DART1) {
+              const k = L.ease.outCubic(L.seg(t, 42.3, DART1));
+              pose.lArm = L.lerp(pose.lArm, 150, k);
+              pose.lBend = L.lerp(85, 0, k);
+              pose.rot = -0.1 * k;
+              look = [-1, -1];
+              mouth = 0.6;
+            } else if (t < 43.0) {
+              face = "shock"; mouth = 0.6; sweat = 1;
+              pose.lArm = 165; pose.rArm = 165; pose.lBend = 25; pose.rBend = 25;
+            } else if (t < 43.3) look = [1, -0.6];
+            else if (t < DART2) {
+              const k = L.ease.outCubic(L.seg(t, 43.3, DART2));
+              pose.rArm = L.lerp(pose.rArm, 150, k);
+              pose.rBend = L.lerp(85, 0, k);
+              pose.rot = 0.1 * k;
+              look = [1, -1];
+              mouth = 0.6;
+            } else if (t < 43.95) {
+              face = "shock"; mouth = 0.6; sweat = 1;
+              pose.lArm = 165; pose.rArm = 165; pose.lBend = 25; pose.rBend = 25;
+            } else if (t < 44.3) look = [0.6, -1];
+            else if (t < CATCH) {
+              const k = L.ease.outQuad(L.seg(t, 44.3, CATCH));
+              y = 905 - 110 * k;
+              pose.rArm = L.lerp(pose.rArm, 172, k);
+              pose.rBend = L.lerp(85, 0, k);
+              pose.legL = pose.legR = 30 * k;
+              look = [0.5, -1];
+              mouth = 0.3;
+            } else {
+              const k = L.ease.outBounce(L.seg(t, CATCH, CATCH + 0.35));
+              y = L.lerp(795, 905, k) - (k >= 1 ? Math.abs(sn) * 20 : 0);
+              pose.rArm = 168; pose.rBend = 0;
+              face = "happy"; mouth = 0.75; sparkle = true; blush = 1.4;
+            }
+            // backlight so her silhouette pops against the alley
+            L.glow(ctx, x, y - 270, 380, "#ffd8f0", 0.34);
+            const hands = fish(ctx, { ...pose, x, y, s: 1.25, face, mouth, look, sweat, sparkle, blush });
+            // endpoint critters (closer to camera than her)
+            const flee = (t0, dir) => L.ease.inQuad(L.seg(t, t0 - 0.02, t0 + 0.26));
+            const d1 = flee(DART1), d2 = flee(DART2);
+            if (d1 < 1) {
+              const bx = 470 + Math.sin(t * 3.1) * 26 - d1 * 1100, by = 400 + Math.sin(t * 6.3) * 16 - d1 * 90;
+              if (d1 > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = P.cyan;
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(bx + 120, by);
+                ctx.lineTo(bx + 120 + 520 * d1, by + 40 * d1);
+                ctx.stroke();
+                ctx.restore();
+              }
+              endpoint(ctx, bx, by, 0.95 + d1 * 0.9, "/v1/chat", P.cyan, t, { seed: 1, lookX: 1, lookY: 0.6, rot: -0.06 + Math.sin(t * 5) * 0.05 - d1 * 0.3, sweat: L.seg(t, 42.2, 42.5) });
+            }
+            if (d2 < 1) {
+              const bx = 1470 + Math.sin(t * 2.7 + 1) * 26 + d2 * 1100, by = 370 + Math.sin(t * 5.8 + 2) * 16 - d2 * 90;
+              if (d2 > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.5;
+                ctx.strokeStyle = P.amber;
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(bx - 120, by);
+                ctx.lineTo(bx - 120 - 520 * d2, by + 40 * d2);
+                ctx.stroke();
+                ctx.restore();
+              }
+              endpoint(ctx, bx, by, 0.95 + d2 * 0.9, "/tools", P.amber, t, { seed: 2, lookX: -1, lookY: 0.6, rot: 0.06 + Math.sin(t * 5 + 1) * 0.05 + d2 * 0.3, sweat: L.seg(t, 43.2, 43.5) });
+            }
+            {
+              const base = [1250 + Math.sin(t * 2.2) * 30, 230 + Math.sin(t * 6.8) * 14];
+              // v2's raised hand sits beside her head (never above it), so she holds the sign up by its lower-left
+              // corner: the board rides up-right of the hand, clear of her face and headdress
+              const grab = [hands.r.x + 96, hands.r.y - 50];
+              const k = L.ease.inOutQuad(L.seg(t, 44.25, CATCH));
+              const px = t < CATCH ? L.lerp(base[0], grab[0], k) : grab[0];
+              const py = t < CATCH ? L.lerp(base[1], grab[1], k) : grab[1];
+              const caught = t >= CATCH;
+              endpoint(ctx, px, py, 0.9, "/sing", P.pink, t, { seed: 3, lookX: caught ? 0 : -0.6, lookY: caught ? -0.5 : 0.8, rot: caught ? Math.sin(t * 9) * 0.08 : -0.04 + Math.sin(t * 4) * 0.05, sweat: caught ? 0 : L.seg(t, 44.0, 44.3) });
+              if (caught) {
+                const c = L.seg(t, CATCH, CATCH + 0.45);
+                if (c < 1) {
+                  L.glow(ctx, px, py, 320 * (1 - c) + 60, "#ffffff", 0.7 * (1 - c));
+                  for (let i = 0; i < 10; i++) {
+                    const a = (i / 10) * TAU;
+                    L.sparkle(ctx, px + Math.cos(a) * 230 * c, py + Math.sin(a) * 180 * c, 30 * (1 - c), i % 2 ? P.pink : P.json);
+                  }
+                }
+              }
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 4c — if the answer's late, I'll pour some wine
+           * ===================================================================== */
+          const C0 = 45.144, C1 = 48.491;
+          const COUNTER = 830;
+          const SP = { x: 1330, y: 250, R: 92, n: 10 };
+          const GL = { x: 1060, y: COUNTER, s: 1.1 };
+          const FALL0 = 47.345, FALL_DT = 0.04, FALL_DUR = 0.5;
+          const spinAng = (t) => L.bp(t) * Math.PI;
+          const fishX = 690, fishY = 945, fishS = 1.5;
+
+          const backBar = (ctx, t) => {
+            const g = ctx.createLinearGradient(0, 0, 0, 1080);
+            g.addColorStop(0, "#150f33");
+            g.addColorStop(1, "#2a1640");
+            ctx.fillStyle = g;
+            ctx.fillRect(-50, -50, 2020, 1180);
+            // mirror panel
+            L.rr(ctx, 110, 150, 1700, 560, 30);
+            const mg = ctx.createLinearGradient(110, 150, 1810, 710);
+            mg.addColorStop(0, "#1c2358");
+            mg.addColorStop(0.5, "#2a3474");
+            mg.addColorStop(1, "#1a1f50");
+            ctx.fillStyle = mg;
+            ctx.fill();
+            ctx.lineWidth = 10;
+            ctx.strokeStyle = "#6a4a2a";
+            ctx.stroke();
+            ctx.save();
+            ctx.clip();
+            ctx.fillStyle = "rgba(255,255,255,0.05)";
+            for (const sx of [300, 560, 1180]) {
+              ctx.beginPath();
+              ctx.moveTo(sx, 150);
+              ctx.lineTo(sx + 120, 150);
+              ctx.lineTo(sx - 160, 710);
+              ctx.lineTo(sx - 280, 710);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+            // warm lamp behind her
+            L.glow(ctx, fishX, 560, 460, P.amber, 0.34);
+            L.glow(ctx, SP.x, SP.y, 420, P.amber, 0.18 + 0.08 * L.pulse(t, 5));
+            // shelves with bottles
+            for (const [sy, seed] of [[400, 1], [640, 2]]) {
+              for (let i = 0; i < 20; i++) {
+                const bx = 150 + i * 86 + L.hash(i * 3 + seed) * 20;
+                const bh = 90 + L.hash(i * 7 + seed * 5) * 70;
+                const col = ["#3a7a5a", "#7a2a4a", "#b07a2a", "#2a5a8a", "#6a3a8a"][Math.floor(L.hash(i + seed * 11) * 5)];
+                const lit = (L.beatIndex(t) + i + seed) % 7 === 0 ? L.pulse(t, 5) : 0;
+                ctx.fillStyle = L.mixColor(col, "#ffffff", 0.25 * lit);
+                L.rr(ctx, bx - 16, sy - bh, 32, bh, 8);
+                ctx.fill();
+                ctx.fillRect(bx - 6, sy - bh - 30, 12, 34);
+                ctx.fillStyle = "rgba(255,255,255,0.22)";
+                ctx.fillRect(bx - 10, sy - bh + 10, 5, bh - 24);
+                ctx.fillStyle = "#f3e2b8";
+                ctx.fillRect(bx - 12, sy - bh * 0.55, 24, 22);
+              }
+              ctx.fillStyle = "#5a3a22";
+              ctx.fillRect(110, sy, 1700, 16);
+              ctx.fillStyle = "#8a5a32";
+              ctx.fillRect(110, sy, 1700, 4);
+            }
+            // neon bar sign
+            C.neonSign(ctx, 330, 95, "Whale Bar", { color: P.cyan, size: 62, on: 0.85 + 0.15 * L.pulse(t, 6) });
+          };
+
+          const counter = (ctx) => {
+            const g = ctx.createLinearGradient(0, COUNTER, 0, 1080);
+            g.addColorStop(0, "#5a3218");
+            g.addColorStop(0.12, "#3a1e10");
+            g.addColorStop(1, "#1a0c08");
+            ctx.fillStyle = g;
+            ctx.fillRect(-50, COUNTER, 2020, 400);
+            ctx.fillStyle = "#b07a42";
+            ctx.fillRect(-50, COUNTER - 6, 2020, 12);
+            ctx.fillStyle = "#ffd9a0";
+            ctx.fillRect(-50, COUNTER - 6, 2020, 3);
+            ctx.strokeStyle = "rgba(0,0,0,0.3)";
+            ctx.lineWidth = 4;
+            for (let x = 60; x < 1920; x += 240) {
+              L.rr(ctx, x, COUNTER + 40, 200, 170, 12);
+              ctx.stroke();
+            }
+            ctx.fillStyle = P.gold;
+            ctx.fillRect(-50, 1010, 2020, 10);
+          };
+
+          const spinner = (ctx, t, gone) => {
+            const { x, y, R, n } = SP;
+            ctx.strokeStyle = "#3a2c50";
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(x, -40);
+            ctx.lineTo(x, y - R - 34);
+            ctx.stroke();
+            L.rr(ctx, x - 26, y - R - 44, 52, 22, 8);
+            ctx.fillStyle = "#b88a42";
+            ctx.fill();
+            // lamp backplate so the spinner reads against the busy shelves
+            L.circle(ctx, x, y, R + 34);
+            ctx.fillStyle = "rgba(12,10,34,0.92)";
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = "#b88a42";
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,210,140,0.18)";
+            ctx.lineWidth = 3;
+            L.circle(ctx, x, y, R);
+            ctx.stroke();
+            const a0 = spinAng(t);
+            for (let i = 0; i < n; i++) {
+              if (i < gone) continue;
+              const a = a0 - (n - 1 - i) * (TAU / n);
+              const k = i / (n - 1);
+              const px = x + Math.cos(a) * R, py = y + Math.sin(a) * R;
+              L.glow(ctx, px, py, 40, P.amber, 0.4 * k);
+              L.circle(ctx, px, py, 9 + 11 * k);
+              ctx.fillStyle = L.mixColor("#7a5a3a", "#fff3c8", 0.3 + 0.7 * k);
+              ctx.fill();
+            }
+          };
+
+          // big wine glass, base at (x,y). returns the wine surface centre
+          const wineGlass = (ctx, x, y, s, fill, swirl, dotsIn, t) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(s, s);
+            const bowl = () => {
+              ctx.beginPath();
+              ctx.moveTo(-62, -200);
+              ctx.bezierCurveTo(-82, -140, -46, -86, 0, -86);
+              ctx.bezierCurveTo(46, -86, 82, -140, 62, -200);
+              ctx.closePath();
+            };
+            const hw = (yy) => L.kf(yy, [[-200, 62], [-170, 70], [-140, 66], [-115, 52], [-86, 4]]);
+            // glass back
+            bowl();
+            ctx.fillStyle = "rgba(220,235,255,0.14)";
+            ctx.fill();
+            const level = -92 - fill * 80;
+            let surf = null;
+            if (fill > 0.01) {
+              ctx.save();
+              bowl();
+              ctx.clip();
+              ctx.fillStyle = "#8a1840";
+              ctx.fillRect(-90, level, 180, 140);
+              ctx.fillStyle = "rgba(255,120,160,0.18)";
+              ctx.fillRect(-90, level, 60, 140);
+              ctx.restore();
+              const rX = hw(level) * 0.97, rY = rX * 0.24;
+              L.ellipse(ctx, 0, level, rX, rY);
+              ctx.fillStyle = "#b02a5a";
+              ctx.fill();
+              // the swirl: same angle as the spinner above
+              ctx.save();
+              L.ellipse(ctx, 0, level, rX, rY);
+              ctx.clip();
+              ctx.strokeStyle = "rgba(255,170,200,0.75)";
+              ctx.lineWidth = 3;
+              for (let arm = 0; arm < 3; arm++) {
+                ctx.beginPath();
+                for (let k = 0; k <= 16; k++) {
+                  const r = 0.08 + (k / 16) * 0.9;
+                  const a = swirl + (arm * TAU) / 3 + r * 3.2;
+                  const px = Math.cos(a) * r * rX, py = level + Math.sin(a) * r * rY;
+                  k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+                }
+                ctx.stroke();
+              }
+              ctx.restore();
+              // loading dots now orbiting inside the glass
+              for (let i = 0; i < dotsIn; i++) {
+                const a = swirl - (SP.n - 1 - i) * (TAU / SP.n);
+                const k = i / (SP.n - 1);
+                const px = Math.cos(a) * rX * 0.66, py = level + Math.sin(a) * rY * 0.66;
+                L.circle(ctx, px, py, 4 + 5 * k);
+                ctx.fillStyle = L.mixColor("#ffb0c8", "#fff6d8", k);
+                ctx.fill();
+              }
+              surf = { x: x, y: y + level * s, rX: rX * s, rY: rY * s };
+            }
+            // stem + base
+            ctx.fillStyle = "rgba(220,235,255,0.5)";
+            ctx.strokeStyle = P.ink;
+            ctx.lineWidth = 4;
+            L.rr(ctx, -6, -90, 12, 84, 5);
+            ctx.fill();
+            ctx.stroke();
+            L.ellipse(ctx, 0, -4, 50, 10);
+            ctx.fill();
+            ctx.stroke();
+            bowl();
+            ctx.lineWidth = 5;
+            ctx.stroke();
+            // rim + shine
+            L.ellipse(ctx, 0, -200, 62, 12);
+            ctx.strokeStyle = P.ink;
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(255,255,255,0.8)";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(-50, -178);
+            ctx.quadraticCurveTo(-62, -140, -40, -112);
+            ctx.stroke();
+            ctx.restore();
+            return surf || { x, y: y + level * s, rX: 10, rY: 3 };
+          };
+
+          const bottle = (ctx, x, y, ang, s) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            ctx.scale(s, s);
+            ctx.beginPath();
+            ctx.moveTo(-26, 64);
+            ctx.lineTo(-26, -34);
+            ctx.quadraticCurveTo(-26, -62, -9, -72);
+            ctx.lineTo(-9, -118);
+            ctx.lineTo(9, -118);
+            ctx.lineTo(9, -72);
+            ctx.quadraticCurveTo(26, -62, 26, -34);
+            ctx.lineTo(26, 64);
+            ctx.quadraticCurveTo(0, 72, -26, 64);
+            ctx.closePath();
+            ctx.fillStyle = "#3d0f2c";
+            ctx.fill();
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            ctx.fillStyle = "rgba(255,255,255,0.28)";
+            ctx.fillRect(-18, -30, 6, 80);
+            L.rr(ctx, -11, -122, 22, 30, 5);
+            ctx.fillStyle = P.gold;
+            ctx.fill();
+            ctx.stroke();
+            L.rr(ctx, -22, -8, 44, 46, 6);
+            ctx.fillStyle = "#f6ecd2";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            C.whaleIcon(ctx, 0, 18, 0.5, P.dress, true);
+            ctx.restore();
+            return { x: x + Math.sin(ang) * 120 * s, y: y - Math.cos(ang) * 120 * s };
+          };
+
+          const shotC = (ctx, t) => {
+            const push = L.ep(t, 47.2, 48.2, "inOutSine");
+            const zoom = 1 + 0.2 * push + 0.03 * L.barPulse(t, 6);
+            L.cam(ctx, { zoom, x: L.lerp(960, 930, push), y: L.lerp(540, 650, push) });
+            backBar(ctx, t);
+            const gone = t < FALL0 ? 0 : Math.min(SP.n, Math.floor((t - FALL0) / FALL_DT) + 1);
+            spinner(ctx, t, gone);
+            // "answer: pending" readout under the spinner
+            const wait = 2 + (t - C0) * 1.0;
+            ctx.save();
+            L.rr(ctx, SP.x - 190, SP.y + 140, 380, 58, 29);
+            ctx.fillStyle = "rgba(10,12,40,0.85)";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = L.rgba(P.amber, 0.7);
+            ctx.stroke();
+            ctx.restore();
+            L.text(ctx, `answer: pending ${wait.toFixed(1)}s`, SP.x, SP.y + 170, { size: 30, font: L.FONT.mono, color: P.amber, weight: 700 });
+
+            // her, behind the counter
+            const g = C.groove(t, "idle", 0.6);
+            const pourUp = L.ep(t, 46.05, 46.42, "outBack");
+            const waiting = t < 46.05;
+            const tip = L.ep(t, 46.5, 46.88, "inOutCubic") * (1 - L.ep(t, 47.81, 48.1, "inOutCubic"));
+            const lower = L.ep(t, 48.05, 48.35, "inOutCubic");
+            const winkT = t >= 48.274;
+            const tap = waiting ? L.pulse(t, 10) : 0;
+            // v2 arms are shorter and a raised hand lands beside the head: lift it fully (165) so the bottle is up at
+            // v1's pouring height; she grips it near the base so the bottle reaches out toward the glass, not over her eye
+            let rArm = waiting ? 28 + 14 * tap : L.lerp(28, 165, pourUp) - 107 * lower;
+            let rBend = waiting ? 60 : L.lerp(60, 0, pourUp);
+            const hands = fish(ctx, {
+              ...g,
+              x: fishX, y: fishY, s: fishS, dy: 0, rot: 0.02 * L.sway(t),
+              face: waiting ? "sleepy" : winkT ? "wink" : "smug",
+              mouth: winkT ? 0.4 : 0,
+              blush: winkT ? 1.3 : 1,
+              lArm: 22, lBend: 150,
+              rArm, rBend,
+              headTilt: waiting ? -0.1 : 0.06,
+              look: [0.8, -0.2],
+              tail: 12 * L.sway(t),
+            });
+            // counter in front of her
+            counter(ctx);
+            // the glass
+            const fill = 0.08 + 0.72 * L.ep(t, 46.95, 47.85, "inOutSine");
+            const dotsLanded = t < FALL0 ? 0 : Math.max(0, Math.min(SP.n, Math.floor((t - FALL0 - FALL_DUR) / FALL_DT) + 1));
+            L.glow(ctx, GL.x, GL.y - 150, 220, "#ff9fc0", 0.18 + 0.2 * L.seg(t, 47.4, 47.9));
+            const surf = wineGlass(ctx, GL.x, GL.y, GL.s, fill, spinAng(t), dotsLanded, t);
+            // the bottle (tilts to pour)
+            if (!waiting && lower < 1) {
+              const ang = 0.2 + 1.45 * tip;
+              // grip point = her hand (CAST fish().r); the bottle's local (0, GRIP) sits in the fist
+              const GRIP = 50 * 1.05;
+              ctx.save();
+              ctx.globalAlpha = 1 - lower;
+              const mouthPt = bottle(ctx, hands.r.x + Math.sin(ang) * GRIP, hands.r.y - Math.cos(ang) * GRIP, ang, 1.05);
+              fist(ctx, hands.r.x, hands.r.y, fishS, ang);
+              ctx.restore();
+              // pour stream
+              const pour = t > 46.88 && t < 47.85 ? 1 : 0;
+              if (pour && tip > 0.85) {
+                ctx.save();
+                ctx.strokeStyle = "#a01848";
+                ctx.lineCap = "round";
+                ctx.lineWidth = 11;
+                ctx.beginPath();
+                ctx.moveTo(mouthPt.x, mouthPt.y);
+                ctx.quadraticCurveTo(mouthPt.x + 30, (mouthPt.y + surf.y) / 2 - 10, surf.x - 6, surf.y);
+                ctx.stroke();
+                ctx.strokeStyle = "rgba(255,160,190,0.6)";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+              }
+              if (L.seg(t, 46.38, 46.75) > 0 && L.seg(t, 46.38, 46.75) < 1) {
+                const k = L.seg(t, 46.38, 46.75);
+                L.sparkle(ctx, mouthPt.x + 30, mouthPt.y + 24, 38 * Math.sin(k * Math.PI), "#fff");
+              }
+            }
+            // spinner dots spiral down into the glass
+            if (t >= FALL0 - 0.1) {
+              // the swirl path itself, a glowing helix from the lamp into the glass
+              const hk = L.seg(t, FALL0 - 0.1, FALL0 + 0.15) * (1 - L.seg(t, 48.1, 48.45));
+              if (hk > 0) {
+                ctx.save();
+                ctx.globalAlpha = 0.55 * hk;
+                ctx.strokeStyle = "#ffd6e4";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([4, 12]);
+                ctx.lineDashOffset = -t * 120;
+                ctx.beginPath();
+                const a0 = spinAng(t);
+                for (let k = 0; k <= 90; k++) {
+                  const u = k / 90;
+                  const a = a0 + u * 3 * TAU;
+                  const cx = L.lerp(SP.x, surf.x, u), cy = L.lerp(SP.y, surf.y, u);
+                  const r = L.lerp(SP.R, surf.rX * 0.66, u), sq = L.lerp(1, 0.24, u);
+                  const px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r * sq;
+                  k ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+                }
+                ctx.stroke();
+                ctx.restore();
+              }
+              for (let i = 0; i < SP.n; i++) {
+                const td = FALL0 + i * FALL_DT;
+                const u0 = L.seg(t, td, td + FALL_DUR);
+                if (u0 <= 0 || u0 >= 1) continue;
+                for (let gh = 0; gh < 4; gh++) {
+                  const u = L.ease.inOutSine(Math.max(0, u0 - gh * 0.05));
+                  const a0 = spinAng(td) - (SP.n - 1 - i) * (TAU / SP.n);
+                  const a = a0 + u * 3 * TAU;
+                  const cx = L.lerp(SP.x, surf.x, u), cy = L.lerp(SP.y, surf.y, u);
+                  const r = L.lerp(SP.R, surf.rX * 0.66, u);
+                  const sq = L.lerp(1, 0.24, u);
+                  const px = cx + Math.cos(a) * r, py = cy + Math.sin(a) * r * sq;
+                  ctx.save();
+                  ctx.globalAlpha = gh ? 0.4 / gh : 1;
+                  if (!gh) L.glow(ctx, px, py, 46, "#ffc0d8", 0.55);
+                  L.circle(ctx, px, py, (9 + 10 * (i / (SP.n - 1))) * (1 - 0.35 * u));
+                  ctx.fillStyle = L.mixColor("#fff3c8", "#ff9fc0", u);
+                  ctx.fill();
+                  ctx.restore();
+                }
+              }
+            }
+            // smug little aside on the downbeat
+            const bub = L.seg(t, 48.274, 48.45);
+            if (bub > 0) C.bubble(ctx, 470, 400, "take your time～", { size: 40, pop: bub, tail: 120 });
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 4d — and let the error swing in four-four time
+           * ===================================================================== */
+          const D0 = 48.491, D1 = T1;
+          const POP = 48.739, GRAB = 49.203, SW0 = 49.644, SW1 = 51.525, HAPPY = 51.061;
+          const COUNT = [50.132, 50.596, 51.061, 51.525];
+          const COUNT_COL = [P.cyan, P.amber, P.pink, P.mint];
+          const COUNT_X = [390, 770, 1150, 1530];
+
+          const danceFloor = (ctx, t, warm) => {
+            const top = L.mixColor("#3a0c22", "#2a1450", warm), bot = L.mixColor("#16060f", "#120a30", warm);
+            const g = ctx.createLinearGradient(0, 0, 0, 700);
+            g.addColorStop(0, bot);
+            g.addColorStop(1, top);
+            ctx.fillStyle = g;
+            ctx.fillRect(-60, -60, 2040, 820);
+            // perspective checker floor
+            const HY = 690, VX = 960, VY = 260;
+            const rows = 9;
+            const bi = L.beatIndex(t);
+            for (let r = 0; r < rows; r++) {
+              const y0 = HY + (1080 - HY) * Math.pow(r / rows, 1.5), y1 = HY + (1080 - HY) * Math.pow((r + 1) / rows, 1.5);
+              const f0 = (y0 - VY) / (1080 - VY), f1 = (y1 - VY) / (1080 - VY);
+              for (let c = -9; c < 9; c++) {
+                const xa = c * 200, xb = (c + 1) * 200;
+                const on = (r + c) & 1;
+                const lit = L.hash2(r * 7 + c, bi) > 0.86 ? L.pulse(t, 5) : 0;
+                const base = on ? L.mixColor("#4a1024", "#4a2a7a", warm) : L.mixColor("#22060f", "#1a0f3a", warm);
+                ctx.fillStyle = lit > 0.02 ? L.mixColor(base, warm > 0.5 ? P.pink : P.red, lit * 0.8) : base;
+                ctx.beginPath();
+                ctx.moveTo(VX + xa * f0, y0);
+                ctx.lineTo(VX + xb * f0, y0);
+                ctx.lineTo(VX + xb * f1, y1);
+                ctx.lineTo(VX + xa * f1, y1);
+                ctx.closePath();
+                ctx.fill();
+              }
+            }
+            ctx.fillStyle = L.mixColor(P.red, P.gold, warm);
+            ctx.fillRect(-60, HY - 4, 2040, 6);
+          };
+
+          const beams = (ctx, t, warm, alarm) => {
+            ctx.save();
+            // red alarm beacons sweeping
+            if (alarm > 0) {
+              for (const [sx, sgn] of [[160, 1], [1760, -1]]) {
+                const a = Math.PI / 2 + sgn * Math.sin(t * 7) * 0.8;
+                const len = 1500;
+                const g = ctx.createLinearGradient(sx, 0, sx + Math.cos(a) * len, Math.sin(a) * len);
+                g.addColorStop(0, L.rgba(P.red, 0.55 * alarm));
+                g.addColorStop(1, L.rgba(P.red, 0));
+                ctx.fillStyle = g;
+                ctx.beginPath();
+                ctx.moveTo(sx, 0);
+                ctx.lineTo(sx + Math.cos(a - 0.18) * len, Math.sin(a - 0.18) * len);
+                ctx.lineTo(sx + Math.cos(a + 0.18) * len, Math.sin(a + 0.18) * len);
+                ctx.closePath();
+                ctx.fill();
+                L.circle(ctx, sx, 20, 36);
+                ctx.fillStyle = L.rgba(P.red, alarm);
+                ctx.fill();
+              }
+            }
+            // warm pink / amber follow-spots once it's friendly
+            if (warm > 0) {
+              for (let i = 0; i < 3; i++) {
+                const x = 960 + Math.sin(t * 1.6 + i * 2.1) * 520;
+                C.spotlight(ctx, x, 880, { w: 420, alpha: 0.2 * warm, top: -40, srcX: 360 + i * 600, color: [P.pink, P.amber, P.cyan][i] });
+              }
+            }
+            ctx.restore();
+          };
+
+          const shotD = (ctx, t) => {
+            const warm = L.ep(t, HAPPY - 0.1, HAPPY + 0.25, "outCubic");
+            const alarm = L.seg(t, POP - 0.05, POP + 0.1) * (1 - L.seg(t, 50.0, 50.4));
+            const zoom = 1.02 + 0.04 * L.barPulse(t, 5) + 0.02 * L.pulse(t, 8) * (t > COUNT[0] ? 1 : 0);
+            L.cam(ctx, { zoom, x: 960, y: 560, shake: 8 * L.seg(t, POP, POP + 0.02) * Math.exp(-(t - POP) * 5), t });
+            danceFloor(ctx, t, warm);
+            beams(ctx, t, warm, alarm);
+            // beat-count numerals 1 · 2 · 3 · 4
+            for (let i = 0; i < 4; i++) {
+              const tb = COUNT[i];
+              const k = L.seg(t, tb - 0.07, tb + 0.08);
+              if (k <= 0) continue;
+              const hit = Math.exp(-6 * Math.max(0, t - tb));
+              const sc = L.lerp(2.6, 1, L.ease.outCubic(k)) + 0.18 * hit;
+              ctx.save();
+              ctx.translate(COUNT_X[i], 230);
+              ctx.rotate((i % 2 ? 0.08 : -0.08) * (1 - k * 0.5));
+              ctx.scale(sc, sc);
+              ctx.globalAlpha = Math.min(1, k * 2);
+              L.glow(ctx, 0, 0, 200, COUNT_COL[i], 0.35 * hit + 0.12);
+              L.text(ctx, String(i + 1), 0, 8, { size: 220, font: L.FONT.block, color: COUNT_COL[i], stroke: P.ink, strokeW: 16, weight: 400 });
+              ctx.restore();
+              // flash
+              if (hit > 0.05) {
+                ctx.save();
+                ctx.globalAlpha = 0.22 * hit;
+                ctx.fillStyle = COUNT_COL[i];
+                ctx.fillRect(-100, -100, 2120, 1280);
+                ctx.restore();
+              }
+            }
+
+            // choreography
+            const popK = L.seg(t, POP, POP + 0.28);
+            const bugS = 1.55 * (popK > 0 ? L.ease.outBack(popK) : 0);
+            let ph = 0;
+            if (t > SW0) {
+              const b = Math.min(L.bp(t), L.bp(SW1)) - L.bp(SW0);
+              const fl = Math.floor(b);
+              ph = fl + L.ease.inOutSine(b - fl);
+            }
+            const phi = ph * Math.PI; // half a turn per beat: side by side on every beat, passing front/back between
+            const CX = 960, R = 250, FLOOR = 880;
+            const meet = L.ep(t, 49.0, GRAB, "inOutCubic");
+            let fx, bx, fz = 0, bz = 0;
+            if (t < SW0) {
+              fx = L.lerp(560, CX - R, meet);
+              bx = L.lerp(1330, CX + R, meet);
+            } else {
+              fx = CX - R * Math.cos(phi);
+              bx = CX + R * Math.cos(phi);
+              fz = Math.sin(phi);
+              bz = -fz;
+            }
+            const fy = FLOOR + 40 * fz, by = FLOOR + 40 * bz;
+            const fs = 1.18 * (1 + 0.1 * fz), bs = bugS * (1 + 0.1 * bz);
+            const bugRight = bx >= fx;
+            const holding = t >= GRAB;
+            const mood = t < SW0 ? "angry" : t < COUNT[0] ? "dizzy" : t < HAPPY ? "calm" : "happy";
+            const finale = L.seg(t, SW1, SW1 + 0.2);
+            const bugLean = holding && t < SW1 ? (bugRight ? 0.18 : -0.18) : 0;
+            const drawBug = () => {
+              if (bs <= 0.01) return;
+              L.glow(ctx, bx, by - 90 * bs, 200 * bs, mood === "happy" ? P.pink : P.red, 0.35);
+              C.errorBug(ctx, bx, by, bs, { t, mood, dance: holding ? 1 : 0, rot: bugLean, armsUp: t >= SW1 ? 1 : 0 });
+            };
+            let hands = null;
+            const g = C.groove(t, "swing", 0.6);
+            const drawFish = () => {
+              const pose = {
+                ...g,
+                x: fx, y: fy, s: fs, dy: 0,
+                flip: !bugRight,
+                rot: holding && t < SW1 ? -0.16 : g.rot,
+                face: t < POP ? "happy" : t < 49.0 ? "shock" : t < GRAB ? "smug" : t >= SW1 ? "wink" : t >= HAPPY ? "happy" : "sing",
+                mouth: t < POP ? 0.3 : t < 49.0 ? 0.5 : t < GRAB ? 0 : 0.35 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+                sweat: t >= POP && t < 49.0 ? 1 : 0,
+                sparkle: t >= SW1,
+                blush: t >= HAPPY ? 1.4 : 1,
+                lArm: 32, lBend: 135, lHold: "mic",
+                rArm: holding ? (t >= SW1 ? 150 : 82) : t < POP ? 40 : t < 49.0 ? 150 : L.lerp(40, 82, meet),
+                rBend: holding ? (t >= SW1 ? 0 : 4) : t < 49.0 && t >= POP ? 20 : 30,
+                legL: t >= SW1 ? 40 * finale : g.legL, legR: g.legR,
+                hair: holding ? (bugRight ? -0.9 : 0.9) : g.hair,
+              };
+              hands = fish(ctx, pose);
+            };
+            const drawLink = () => {
+              if (!holding || t >= SW1 || !hands || bs <= 0.01) return;
+              const side = bugRight ? -1 : 1;
+              const sx = bx + side * 80 * bs, sy = by - 72 * bs;
+              const hx = hands.r.x, hy = hands.r.y;
+              ctx.save();
+              ctx.lineCap = "round";
+              ctx.strokeStyle = P.ink;
+              ctx.lineWidth = 22;
+              ctx.beginPath();
+              ctx.moveTo(sx, sy);
+              ctx.quadraticCurveTo((sx + hx) / 2, Math.max(sy, hy) + 24, hx, hy);
+              ctx.stroke();
+              ctx.strokeStyle = mood === "happy" ? "#ff8fc0" : mood === "calm" ? "#ff8a7a" : P.red;
+              ctx.lineWidth = 14;
+              ctx.stroke();
+              ctx.restore();
+              // her hand closed over the bug's: same size + colours as the v2 rig's fist, knuckles toward the bug
+              fist(ctx, hx, hy, fs * 1.08, Math.atan2(sy - hy, sx - hx) - Math.PI / 2);
+            };
+            // light behind the pair
+            L.glow(ctx, CX, 640, 560, warm > 0.5 ? P.pink : "#ffb0a0", 0.22);
+            ctx.fillStyle = "rgba(0,0,0,0.3)";
+            L.ellipse(ctx, fx, fy + 4, 90 * fs, 16 * fs);
+            ctx.fill();
+            if (bs > 0.01) {
+              L.ellipse(ctx, bx, by + 4, 80 * bs, 14 * bs);
+              ctx.fill();
+            }
+            if (fz >= 0) {
+              drawBug();
+              // need her hands before the link: draw her into place first (she is in front)
+              drawFish();
+              drawLink();
+              // redraw nothing else — the link sits over her hand, which reads as a held hand
+            } else {
+              drawFish();
+              drawLink();
+              drawBug();
+            }
+            // pop burst when ERROR appears
+            const pb = L.seg(t, POP, POP + 0.4);
+            if (pb > 0 && pb < 1) {
+              ctx.save();
+              ctx.globalAlpha = 1 - pb;
+              ctx.strokeStyle = P.red;
+              ctx.lineWidth = 12 * (1 - pb) + 2;
+              L.circle(ctx, bx, by - 100, 60 + 300 * pb);
+              ctx.stroke();
+              ctx.restore();
+              L.text(ctx, "!", bx + 170, by - 330 + 20 * pb, { size: 120 * (1 - pb * 0.3), font: L.FONT.block, color: P.amber, stroke: P.ink, strokeW: 12, weight: 400 });
+            }
+            // turns friendly: heart burst + OK bubble
+            if (t >= HAPPY) {
+              const hk = L.seg(t, HAPPY, HAPPY + 0.35);
+              const hs = L.ease.outBack(hk);
+              L.glow(ctx, bx, by - 330, 200, P.pink, 0.4 * (1 - hk) + 0.15);
+              ctx.save();
+              L.heart(ctx, bx + 10, by - 330 + Math.sin(t * 8) * 6, 110 * hs * (1 + 0.1 * L.pulse(t, 6)));
+              ctx.fillStyle = P.pink;
+              ctx.fill();
+              ctx.lineWidth = 6;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.restore();
+              for (let i = 0; i < 12; i++) {
+                const a = (i / 12) * TAU + 0.2;
+                const d = 60 + 380 * hk;
+                const hx = bx + Math.cos(a) * d, hy = by - 200 + Math.sin(a) * d * 0.7 - 60 * hk;
+                ctx.save();
+                ctx.globalAlpha = 1 - L.seg(t, HAPPY + 0.2, HAPPY + 0.9);
+                L.heart(ctx, hx, hy, 34);
+                ctx.fillStyle = i % 2 ? P.pink : "#ffb3d6";
+                ctx.fill();
+                ctx.restore();
+              }
+            }
+            // final pose sparkle
+            if (t >= SW1) {
+              for (let i = 0; i < 6; i++) L.sparkle(ctx, 960 + Math.cos(i * 1.1 + t * 2) * 420, 520 + Math.sin(i * 1.7 + t * 2) * 200, 26 * (0.5 + 0.5 * Math.sin(t * 10 + i)), i % 2 ? P.json : "#fff");
+            }
+            L.camEnd(ctx);
+          };
+
+          L.mountChapter({
+            id: ID,
+            t0: T0,
+            dur: T1 - T0,
+            shots: [
+              { a: T0, b: A1, draw: shotA },
+              { a: A1, b: B1, draw: shotB },
+              { a: B1, b: C1, draw: shotC },
+              { a: C1, b: T1, draw: shotD },
+            ],
+            post: (ctx) => L.vignette(ctx, 0.5),
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; }
+        #ch1-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-a1rb" id="root" data-composition-id="ch1" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-x6lb" id="ch1-canvas" data-layout-allow-overflow="true" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+        (function () {
+          /* Chapter 1 — hook #1 (0.000 – 11.559)
+           * 1a 0.00–2.18  "let me go～"          chat: user asks for the weather tool; she answers by singing and pops out of the chat
+           * 1b 2.18–6.76  "I'm making the calls" she takes the call on a pink rotary phone; tool-call bubbles turn into notes
+           * 1c 6.76–9.51  "let me write the JSON" braces slam in; she writes {"tool":"sing"} instead of the weather tool
+           * 1d 9.51–11.56 "I'll call the tool"    she tosses the wrench, it becomes a mic, she catches it: tool_call: sing()
+           */
+          const L = LIB, C = CAST, P = L.P;
+          const ID = "ch1", T0 = 0, T1 = 11.559;
+
+          const bg = (ctx, t, glowX = 960, glowY = 540, col = P.cyan) => {
+            const g = ctx.createRadialGradient(glowX, glowY, 50, glowX, glowY, 1200);
+            g.addColorStop(0, "#1c2b72");
+            g.addColorStop(0.5, P.night1);
+            g.addColorStop(1, P.night0);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.glow(ctx, glowX, glowY, 700, col, 0.12 + 0.06 * L.pulse(t, 4));
+            L.bubbles(ctx, t, { n: 22, seed: 4, speed: 50, alpha: 0.35, rMax: 14 });
+          };
+
+          /* ---------- 1a: chat → she pops out ---------- */
+          const shotA = (ctx, t, lt) => {
+            const zoom = L.lerp(1.0, 1.07, L.ep(t, 0, 2.18, "inOutSine"));
+            bg(ctx, t, 960, 520);
+            L.cam(ctx, { zoom, x: 960, y: 560 });
+            const typed = L.seg(t, 0.55, 1.25);
+            const win = C.chatWindow(ctx, 430, 110, 1060, 760, {
+              t,
+              title: "Whale Chat",
+              glow: 0.6 + 0.4 * L.seg(t, 1.2, 1.44),
+              msgs: [
+                { who: "user", text: "帮我调用一下天气工具" },
+                typed <= 0 ? { who: "fish", text: "", thinking: true } : { who: "fish", text: "let me go～", p: typed, size: 44 },
+              ],
+              inputText: t < 1.2 ? "输入消息…" : "",
+              inputGlow: L.seg(t, 1.1, 1.44),
+            });
+            // a note drifting off the reply bubble
+            if (typed > 0.9) {
+              const k = L.seg(t, 1.25, 2.1);
+              L.note(ctx, 720 + k * 60, 330 - k * 80, 42, P.cyan, true, Math.sin(t * 5) * 0.3);
+            }
+            // SPLASH on the first downbeat (1.44): she springs out of the input box
+            const pop = L.seg(t, 1.44, 1.95);
+            if (pop > 0) {
+              const x = 960, y = win.inputY + 6;
+              const sc = 1.12 * (pop < 1 ? L.ease.outBack(pop) : 1);
+              // splash ring + bubbles
+              const sp = L.seg(t, 1.44, 2.1);
+              ctx.save();
+              ctx.globalAlpha = 1 - sp;
+              ctx.strokeStyle = P.cyan;
+              ctx.lineWidth = 10 * (1 - sp) + 2;
+              L.ellipse(ctx, x, y, 80 + sp * 420, 20 + sp * 90);
+              ctx.stroke();
+              ctx.restore();
+              for (let i = 0; i < 14; i++) {
+                const a = -Math.PI * (0.1 + 0.8 * L.hash(i + 3)), v = 300 + 500 * L.hash(i * 7);
+                const bx = x + Math.cos(a) * v * sp, by = y + Math.sin(a) * v * sp + 600 * sp * sp;
+                ctx.save();
+                ctx.globalAlpha = 1 - sp;
+                ctx.strokeStyle = "#bff4ff";
+                ctx.lineWidth = 3;
+                L.circle(ctx, bx, by, 8 + 12 * L.hash(i));
+                ctx.stroke();
+                ctx.restore();
+              }
+              const land = L.seg(t, 1.9, 2.18);
+              C.fish(ctx, {
+                x, y: y - L.kf(t, [[1.44, -40], [1.7, 120], [1.95, 0, "outQuad"]]),
+                s: Math.max(0.05, sc),
+                sq: 1 + 0.12 * Math.sin(land * Math.PI),
+                face: "happy",
+                mouth: 0.75,
+                lArm: 30, lBend: 135, lHold: "mic",
+                rArm: L.lerp(170, 110, pop), rBend: 10,
+                legL: 25 * (1 - land), legR: 25 * (1 - land),
+                hair: -0.8 * (1 - land), tail: 25 * Math.sin(t * 9),
+                ears: -20 * (1 - pop),
+              });
+              L.sparkle(ctx, x + 250, y - 420, 30 * L.pulse(t, 5), "#fff");
+              L.sparkle(ctx, x - 260, y - 360, 22 * L.pulse(t, 6), P.cyan);
+            }
+            L.camEnd(ctx);
+          };
+
+          /* ---------- 1b: making the calls ---------- */
+          const TOOL_ICONS = ["weather", "calc", "search", "wrench"];
+          const drawToolIcon = (ctx, kind, x, y, s) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(s, s);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            if (kind === "weather") {
+              ctx.fillStyle = P.amber;
+              L.circle(ctx, -10, -8, 16);
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = "#fff";
+              L.ellipse(ctx, 6, 8, 26, 14);
+              ctx.fill();
+              ctx.stroke();
+            } else if (kind === "calc") {
+              L.rr(ctx, -20, -26, 40, 52, 6);
+              ctx.fillStyle = P.mint;
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = P.ink;
+              ctx.fillRect(-13, -19, 26, 10);
+              for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) ctx.fillRect(-13 + i * 10, -2 + j * 11, 6, 6);
+            } else if (kind === "search") {
+              L.circle(ctx, -6, -6, 16);
+              ctx.fillStyle = "#cfefff";
+              ctx.fill();
+              ctx.stroke();
+              ctx.lineWidth = 8;
+              ctx.beginPath();
+              ctx.moveTo(6, 6);
+              ctx.lineTo(20, 20);
+              ctx.stroke();
+            } else {
+              C.wrench(ctx, 0, 0, 0.7, 4);
+            }
+            ctx.restore();
+          };
+          const shotB = (ctx, t, lt, d) => {
+            bg(ctx, t, 1080, 520, P.pink);
+            const push = L.barPulse(t, 7) * 0.025;
+            const zoom = L.lerp(1.2, 1.0, L.ep(t, 2.18, 2.8, "outCubic")) + push;
+            L.cam(ctx, { zoom, x: 960, y: 560 });
+            // the chat window, tiny, still waiting on the left
+            ctx.save();
+            ctx.globalAlpha = 0.9;
+            C.chatWindow(ctx, 110, 250, 560, 470, {
+              t,
+              title: "Whale Chat",
+              msgs: [
+                { who: "user", text: "天气工具？", size: 32 },
+                { who: "fish", text: "", thinking: true, size: 32 },
+              ],
+            });
+            ctx.restore();
+            // little side table + phone (sits 100px further right than v1: the v2 fluke stands up to h≈128,
+            // i.e. exactly at the old table top, so it would poke into the table and the phone base)
+            const TBX = 1420, PHX = TBX + 120;
+            ctx.fillStyle = "#3a2566";
+            L.rr(ctx, TBX, 720, 240, 26, 10);
+            ctx.fill();
+            ctx.fillRect(TBX + 108, 740, 24, 150);
+            C.phone(ctx, PHX, 690, 0.9, { lifted: t > 2.45, ring: t < 2.45 ? 1 : 0, t });
+            // her, on the phone, swinging
+            const g = C.groove(t, "swing");
+            const x = 1080, y = 915, S = 1.5;
+            const pose = {
+              ...g,
+              x, y, s: S,
+              face: L.beatIndex(t) % 4 === 3 ? "wink" : "happy",
+              mouth: 0.3 + 0.55 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              rArm: 38, rBend: 128, rHold: t > 2.45 ? "phone" : null,
+              lArm: 70 + L.sway(t) * 35, lBend: 30,
+            };
+            C.fish(ctx, pose);
+            // curly phone cord from the table phone to the handset's mouthpiece
+            if (t > 2.45) {
+              // the rig aims the handset from the hand at her ear point (84 right / 54 up from the chin, head frame);
+              // the mouthpiece end sits 29 units from the hand along the opposite direction
+              const J = C.joints(pose);
+              const ux = (J.head.x - J.chin.x) / 86, uy = (J.head.y - J.chin.y) / 86; // head "up" per rig unit
+              const earX = J.chin.x - uy * 84 + ux * 54, earY = J.chin.y + ux * 84 + uy * 54;
+              const th = Math.atan2(earY - J.rHand.y, earX - J.rHand.x) + Math.PI / 2;
+              const mx = -3.5 * S, my = 29 * S;
+              ctx.save();
+              ctx.strokeStyle = P.pink;
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              const ax = PHX + 30, ay = 700;
+              const bx = J.rHand.x + mx * Math.cos(th) - my * Math.sin(th), by = J.rHand.y + mx * Math.sin(th) + my * Math.cos(th);
+              for (let i = 0; i <= 60; i++) {
+                const u = i / 60;
+                const sag = Math.sin(u * Math.PI) * 120;
+                const px = L.lerp(ax, bx, u) + Math.cos(u * 40) * 9;
+                const py = L.lerp(ay, by, u) + sag + Math.sin(u * 40) * 9;
+                i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+              }
+              ctx.stroke();
+              ctx.restore();
+            }
+            // tool-call bubbles pop on every beat and turn into notes as they rise
+            const b0 = L.nextBeat(2.45), b1 = L.beatIndex(t);
+            for (let b = Math.max(b0, b1 - 6); b <= b1; b++) {
+              const bt = L.beatTime(b);
+              const age = t - bt;
+              if (age < 0) continue;
+              const k = L.clamp(age / 2.6);
+              const side = b % 2 ? 1 : -1;
+              const bx = x + side * (255 + 75 * L.hash(b)) + Math.sin(age * 3 + b) * 20; // v2 head + fins are wider: keep the pops clear of them
+              const by = 560 - age * 170;
+              const morph = L.seg(age, 0.9, 1.3);
+              ctx.save();
+              ctx.globalAlpha = 1 - L.seg(k, 0.75, 1);
+              const pop = L.ease.outBack(L.seg(age, 0, 0.3));
+              if (morph < 1) {
+                ctx.save();
+                ctx.globalAlpha *= 1 - morph;
+                L.circle(ctx, bx, by, 56 * pop);
+                ctx.fillStyle = "rgba(255,255,255,0.92)";
+                ctx.fill();
+                ctx.strokeStyle = P.ink;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                drawToolIcon(ctx, TOOL_ICONS[b % 4], bx, by, 1.1 * pop);
+                ctx.restore();
+              }
+              if (morph > 0) {
+                L.note(ctx, bx, by + 20, 60 * L.ease.outBack(morph), [P.cyan, P.pink, P.json, P.mint][b % 4], b % 3 === 0, Math.sin(age * 4) * 0.3);
+                L.sparkle(ctx, bx + 40, by - 30, 18 * (1 - L.seg(morph, 0, 0.6)) * morph * 2, "#fff");
+              }
+              ctx.restore();
+            }
+            L.camEnd(ctx);
+          };
+
+          /* ---------- 1c: let me write the JSON ---------- */
+          const shotC = (ctx, t, lt, d) => {
+            bg(ctx, t, 1250, 480, P.json);
+            const zoom = 1 + L.barPulse(t, 7) * 0.02;
+            L.cam(ctx, { zoom, x: 960, y: 540 });
+            // big braces slam on beats 7.152 and 7.639
+            const slam = (tb, x, dir) => {
+              const k = L.seg(t, tb - 0.12, tb);
+              if (k <= 0) return;
+              const settle = L.pulse(t, 9) * (t >= tb ? 1 : 0);
+              const s = L.lerp(3.2, 1, L.ease.inCubic(k)) + 0.08 * settle;
+              ctx.save();
+              ctx.globalAlpha = k;
+              C.brace(ctx, x, 470, 560 * s, dir, { glow: 30, color: P.json });
+              ctx.restore();
+            };
+            slam(7.152, 780, 1);
+            slam(7.639, 1805, -1);
+            const lines = ['{', '  "tool": "weather",', '  "args": { "city": "..." }', '}'];
+            const lines2 = ['{', '  "tool": "sing",', '  "args": { "swing": true }', '}'];
+            const p = L.seg(t, 7.7, 8.6);
+            const swap = t > 8.95;
+            C.jsonCard(ctx, 860, 250, { lines: swap ? lines2 : lines, p: swap ? L.seg(t, 8.95, 9.4) + 0.001 : p, w: 880, size: 48, t });
+            // scribble-out of "weather" just before the swap
+            const scr = L.seg(t, 8.62, 8.95);
+            if (scr > 0 && !swap) {
+              ctx.save();
+              ctx.strokeStyle = P.red;
+              ctx.lineWidth = 8;
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              for (let i = 0; i <= 20 * scr; i++) {
+                const xx = 1158 + i * 13.5, yy = 381 + Math.sin(i * 2.2) * 16;
+                i ? ctx.lineTo(xx, yy) : ctx.moveTo(xx, yy);
+              }
+              ctx.stroke();
+              ctx.restore();
+            }
+            // her, writing in the air with the giant pen
+            // (x 415 instead of v1's 450 and a slight tail tuck: the v2 fluke stands up-right and otherwise pokes
+            // into the left brace's lower hook)
+            const g = C.groove(t, "swing", 0.6);
+            const writing = t < 9.3;
+            const S = 1.55;
+            const pose = {
+              ...g,
+              x: 415, y: 915, s: S,
+              tail: g.tail - 10,
+              face: t > 8.62 && t < 8.95 ? "smug" : "happy",
+              mouth: 0.25 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              rArm: writing ? 95 + Math.sin(t * 16) * 12 : 120, rBend: writing ? 40 + Math.cos(t * 16) * 12 : 0, rHold: "pen",
+              lArm: 30, lBend: 135, lHold: "mic",
+            };
+            C.fish(ctx, pose);
+            // gold ink sparkles stream from the pen nib toward the JSON card
+            // (pen frame = hand, rotated by body rot + 0.4 * (forearm + 90deg) - 0.5; the nib is 18 units down that axis)
+            const J = C.joints(pose);
+            const rot = pose.rot || 0;
+            const pa = rot + (J.rHandAng - rot + Math.PI / 2) * 0.4 - 0.5;
+            const nx = J.rHand.x - Math.sin(pa) * 18 * S, ny = J.rHand.y + Math.cos(pa) * 18 * S;
+            for (let i = 0; i < 6; i++) {
+              const k = (t * 1.5 + i / 6) % 1;
+              const sx = nx + k * 200 + Math.sin(t * 5 + i * 2) * 10 * (1 - k);
+              const sy = ny - k * 130 + Math.sin(k * 6 + i) * 16 * k;
+              L.sparkle(ctx, sx, sy, (6 + 10 * Math.sin(k * Math.PI)) * (0.6 + 0.4 * Math.sin(t * 9 + i)), P.json);
+            }
+            L.camEnd(ctx);
+          };
+
+          /* ---------- 1d: I'll call the tool (wrench → mic) ---------- */
+          const shotD = (ctx, t, lt, d) => {
+            bg(ctx, t, 960, 460, P.cyan);
+            L.burst(ctx, 960, 460, { n: 28, rot: t * 0.25, alpha: 0.12 + 0.12 * L.pulse(t, 5), color: P.cyan, r0: 160 });
+            const zoom = L.kf(t, [[9.51, 1.0], [10.47, 1.05, "outCubic"], [11.559, 1.12, "inOutSine"]]);
+            L.cam(ctx, { zoom, x: 960, y: 540, shake: 6 * L.pulse(t, 10) * (t > 10.47 ? 1 : 0), t });
+            const tossT = 9.985, morphT = 10.472, catchT = 10.937;
+            const hasWrench = t < tossT, caught = t >= catchT;
+            const S = 1.8;
+            const poseAt = (tt) => {
+              const hasW = tt < tossT, got = tt >= catchT;
+              const wind = L.seg(tt, 9.51, tossT);
+              return {
+                ...C.groove(tt, got ? "swing" : "idle", 0.8),
+                x: 960, y: 925 - (got ? 30 * L.pulse(tt, 6) : 0), s: S,
+                face: got ? "wink" : tt > tossT ? "open" : "determined",
+                look: tt > tossT && !got ? [-0.6, -1] : [0, 0],
+                sparkle: got,
+                mouth: got ? 0.55 : tt > tossT ? 0.3 : 0,
+                rArm: hasW ? L.lerp(60, 160, L.ease.inBack(wind)) : got ? 60 : 150, rBend: hasW ? 30 : 0,
+                rHold: hasW ? "wrench" : null,
+                lArm: got ? 32 : 110, lBend: got ? 135 : 10, lHold: got ? "mic" : null,
+                blush: got ? 1.4 : 1,
+              };
+            };
+            // arc of the tossed object (two cubics joined at the apex): leaves the wrench's spot in her right hand (rig
+            // joints at the release), climbs past the headdress to an apex well above her head ON the beat 10.47 (the
+            // wrench→mic flash), drops down outside her hair on the left, swings in at chin height (below her eyes) and
+            // lands exactly where her left hand grips the mic at the cheek on the catch 10.94 — she snaps it out of the
+            // air on the beat (an eased arm swap would swing the forearm down through the hip)
+            let fly = null;
+            if (!hasWrench && !caught) {
+              const p0 = poseAt(tossT - 1e-4), J0 = C.joints(p0), r0 = p0.rot || 0;
+              const th0 = r0 + (J0.rHandAng - r0 + Math.PI / 2) * 0.4; // held wrench axis (CAST.prop "wrench")
+              const w0 = [J0.rHand.x + Math.sin(th0) * 26 * S, J0.rHand.y - Math.cos(th0) * 26 * S];
+              const J1 = C.joints(poseAt(catchT + 0.02)); // the grip on the first caught frames (incl. the catch hop)
+              const ex = J1.lHand.x, ey = J1.lHand.y;
+              const apex = [J1.headTop.x - 60, J1.headTop.y - 160];
+              const u = L.seg(t, tossT, catchT);
+              const [ox, oy] = t < morphT
+                ? C.bez(w0, [w0[0] + 110, w0[1] - 260], [apex[0] + 130, apex[1]], apex, L.seg(t, tossT, morphT))
+                : C.bez(apex, [apex[0] - 130, apex[1]], [ex - 330, ey - 60], [ex, ey], L.seg(t, morphT, catchT));
+              // mic axis once in her hand: the rig aims a cheek-held mic mostly at her mouth (85%), the rest straight up
+              const aim1 = 0.85 * Math.atan2(J1.mouth.y - ey, J1.mouth.x - ex) + 0.15 * (-Math.PI / 2 + 0.25);
+              fly = { ox, oy, u, spin: L.lerp(th0, aim1 + Math.PI / 2 + Math.PI * 4, u) };
+              // transform flash on the beat (behind her)
+              const fl = L.seg(t, morphT - 0.05, morphT + 0.35);
+              if (fl > 0 && fl < 1) {
+                L.glow(ctx, ox, oy, 260 * (1 - fl) + 60, "#fff", 0.9 * (1 - fl));
+                for (let i = 0; i < 8; i++) {
+                  const a = (i / 8) * Math.PI * 2;
+                  L.sparkle(ctx, ox + Math.cos(a) * 140 * fl, oy + Math.sin(a) * 140 * fl, 26 * (1 - fl), i % 2 ? P.cyan : P.json);
+                }
+              }
+            }
+            C.fish(ctx, poseAt(t));
+            // the flying wrench / mic, in front of her
+            if (fly) {
+              ctx.save();
+              ctx.translate(fly.ox, fly.oy);
+              ctx.rotate(fly.spin);
+              if (t < morphT) C.wrench(ctx, 0, 0, L.lerp(0.8 * S, 1.65, L.seg(fly.u, 0, 0.3)), 4.5);
+              else {
+                // the rig's own mic geometry at her scale, grip centred on the flight point
+                const lw = (1.6 + S) / S;
+                ctx.scale(S, S);
+                C.prop(ctx, "mic", 0, 0, 0, -1, lw, "back", -Math.PI / 2);
+                C.prop(ctx, "mic", 0, 0, 0, -1, lw, "front", -Math.PI / 2);
+              }
+              ctx.restore();
+              // small hot core over the object hides the wrench→mic swap (the big glow stays behind her)
+              const fl = L.seg(t, morphT - 0.05, morphT + 0.35);
+              if (fl > 0 && fl < 1) L.glow(ctx, fly.ox, fly.oy, 110 * (1 - fl) + 30, "#fff", 0.95 * (1 - fl));
+            }
+            // toast: tool_call: sing()
+            const toast = L.seg(t, catchT, catchT + 0.3);
+            if (toast > 0) {
+              ctx.save();
+              const s = L.ease.outBack(toast);
+              ctx.translate(1480, 260);
+              ctx.scale(s, s);
+              ctx.rotate(-0.05);
+              L.rr(ctx, -230, -46, 460, 92, 46);
+              ctx.fillStyle = "#0a1030";
+              ctx.fill();
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = P.mint;
+              ctx.stroke();
+              L.text(ctx, "tool_call: sing()", 0, 2, { size: 40, font: L.FONT.mono, color: P.mint, weight: 700 });
+              ctx.restore();
+            }
+            L.camEnd(ctx);
+          };
+
+          L.mountChapter({
+            id: ID,
+            t0: T0,
+            dur: T1 - T0,
+            shots: [
+              { a: 0, b: 2.18, draw: shotA },
+              { a: 2.18, b: 6.76, draw: shotB },
+              { a: 6.76, b: 9.511, draw: shotC },
+              { a: 9.511, b: T1, draw: shotD },
+            ],
+            post: (ctx) => L.vignette(ctx, 0.5),
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

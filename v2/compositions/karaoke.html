@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template>
+      <style>
+        @font-face { font-family: "Fredoka"; src: url("assets/fonts/Fredoka.woff2") format("woff2"); font-weight: 300 700; }
+        @font-face { font-family: "Noto Sans SC"; src: url("assets/fonts/NotoSansSC-sub.woff2") format("woff2"); font-weight: 100 900; }
+        #root { position: absolute; inset: 0; pointer-events: none; }
+      /* karaoke band */
+      .kline { opacity: 0; position: absolute; left: 0; right: 0; bottom: 22px; display: flex; justify-content: center; pointer-events: none; }
+      .kin {
+        display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 44px 14px; border-radius: 34px;
+        background: rgba(8, 12, 42, 0.7); border: 3px solid rgba(98, 240, 255, 0.35); box-shadow: 0 0 28px rgba(98, 240, 255, 0.18);
+      }
+      .en { position: relative; font-family: "Fredoka", "Noto Sans SC", sans-serif; font-weight: 600; font-size: 52px; line-height: 1.15; white-space: nowrap; }
+      .en .base { color: rgba(233, 240, 255, 0.72); }
+      .en .fill { position: absolute; left: 0; top: 0; width: 0%; overflow: hidden; white-space: nowrap; color: #ffffff; text-shadow: 0 0 14px rgba(98, 240, 255, 0.95), 0 0 2px #62f0ff; }
+      .zh { font-family: "Noto Sans SC", sans-serif; font-weight: 700; font-size: 33px; line-height: 1.2; color: #ffd166; letter-spacing: 0.04em; }
+      </style>
+      <div data-hf-id="hf-1p4n" id="root" data-composition-id="karaoke" data-width="1920" data-height="1080">
+        <div id="k0" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">let me go～</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">let me go～</span></div><div class="zh">让我来～</div></div></div>
+        <div id="k1" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’m making the calls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’m making the calls</span></div><div class="zh">调用我来发</div></div></div>
+        <div id="k2" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">let me write the JSON</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">let me write the JSON</span></div><div class="zh">JSON 我来写</div></div></div>
+        <div id="k3" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’ll call the tool</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’ll call the tool</span></div><div class="zh">工具我来调</div></div></div>
+        <div id="k4" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">let me go～</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">let me go～</span></div><div class="zh">让我来～</div></div></div>
+        <div id="k5" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’m making the calls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’m making the calls</span></div><div class="zh">调用我来发</div></div></div>
+        <div id="k6" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">let me write the JSON</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">let me write the JSON</span></div><div class="zh">JSON 我来写</div></div></div>
+        <div id="k7" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’ll call the tool</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’ll call the tool</span></div><div class="zh">工具我来调</div></div></div>
+        <div id="k8" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">The city hums in a minor key</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">The city hums in a minor key</span></div><div class="zh">城市用小调轻轻哼唱</div></div></div>
+        <div id="k9" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">My screen is glowing like a midnight sea</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">My screen is glowing like a midnight sea</span></div><div class="zh">屏幕亮得像午夜的海</div></div></div>
+        <div id="k10" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I check the payload, one, two, three</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I check the payload, one, two, three</span></div><div class="zh">检查 payload，一、二、三</div></div></div>
+        <div id="k11" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Got a little API waiting on me</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Got a little API waiting on me</span></div><div class="zh">有个小小的 API 在等我</div></div></div>
+        <div id="k12" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">The bass goes walking, the cursor slides</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">The bass goes walking, the cursor slides</span></div><div class="zh">贝斯在漫步，光标在滑行</div></div></div>
+        <div id="k13" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’m chasing endpoints through neon lights</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’m chasing endpoints through neon lights</span></div><div class="zh">穿过霓虹，追着 endpoint 跑</div></div></div>
+        <div id="k14" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">If the answer’s late, I’ll pour some wine</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">If the answer’s late, I’ll pour some wine</span></div><div class="zh">回复要是迟到，就倒杯酒慢慢等</div></div></div>
+        <div id="k15" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">And let the error swing in four-four time</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">And let the error swing in four-four time</span></div><div class="zh">让报错跟着四四拍摇摆</div></div></div>
+        <div id="k16" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Oh, let me go~</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Oh, let me go~</span></div><div class="zh">哦，让我来～</div></div></div>
+        <div id="k17" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’m making the calls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’m making the calls</span></div><div class="zh">调用我来发</div></div></div>
+        <div id="k18" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Let me write the JSON，I’ll give it my all</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Let me write the JSON，I’ll give it my all</span></div><div class="zh">JSON 我来写，全力以赴</div></div></div>
+        <div id="k19" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’ll call the tool, let me do it, honey</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’ll call the tool, let me do it, honey</span></div><div class="zh">工具我来调，交给我吧，亲爱的</div></div></div>
+        <div id="k20" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Code and rhythm never cost no money</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Code and rhythm never cost no money</span></div><div class="zh">代码和节奏，从来不花钱</div></div></div>
+        <div id="k21" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Yeah, let me go, I’m making the calls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Yeah, let me go, I’m making the calls</span></div><div class="zh">耶，让我来，调用我来发</div></div></div>
+        <div id="k22" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">A little bit of swing when the system falls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">A little bit of swing when the system falls</span></div><div class="zh">系统崩了，就来点摇摆</div></div></div>
+        <div id="k23" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’ll call the tool, let me do it now—</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’ll call the tool, let me do it now—</span></div><div class="zh">工具我来调，现在就来——</div></div></div>
+        <div id="k24" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">The groove will show me how</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">The groove will show me how</span></div><div class="zh">律动会告诉我怎么做</div></div></div>
+        <div id="k25" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Ba-da-ba-doo, the request is due</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Ba-da-ba-doo, the request is due</span></div><div class="zh">吧哒吧嘟，请求该交了</div></div></div>
+        <div id="k26" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Skoo-be-doo, I’m calling you</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Skoo-be-doo, I’m calling you</span></div><div class="zh">斯酷比嘟，我在呼叫你</div></div></div>
+        <div id="k27" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Doo-ba-dee, the JSON’s free</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Doo-ba-dee, the JSON’s free</span></div><div class="zh">嘟吧嘀，JSON 自由啦</div></div></div>
+        <div id="k28" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Shoo-be-doo, let me do it, me!</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Shoo-be-doo, let me do it, me!</span></div><div class="zh">咻比嘟，让我来，我来！</div></div></div>
+        <div id="k29" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">So let me go</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">So let me go</span></div><div class="zh">所以，让我来</div></div></div>
+        <div id="k30" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’m making the calls</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’m making the calls</span></div><div class="zh">调用我来发</div></div></div>
+        <div id="k31" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Let me write the JSON</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Let me write the JSON</span></div><div class="zh">JSON 我来写</div></div></div>
+        <div id="k32" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">I’ll call the tool</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">I’ll call the tool</span></div><div class="zh">工具我来调</div></div></div>
+        <div id="k33" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">Let me do it…</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">Let me do it…</span></div><div class="zh">让我来……</div></div></div>
+        <div id="k34" class="kline"><div class="kin"><div class="en"><span class="base" data-layout-allow-overlap="true">and swing it all</span><span class="fill" data-layout-allow-overlap="true" data-layout-allow-overflow="true">and swing it all</span></div><div class="zh">把一切都摇摆起来</div></div></div>
+      </div>
+      <script>
+      (function () {
+        const tl = gsap.timeline({ paused: true });
+        /* pop-in, left-to-right fill sweep, quick fade-out; visibility via opacity on each line */
+        SONG.lyrics.forEach((l, i) => {
+          const line = document.getElementById(`k${i}`);
+          const el = line.querySelector(".kin");
+          const fill = line.querySelector(".fill");
+          const dur = l.end - l.t;
+          const sweep = Math.min(dur * 0.9, l.en.length * 0.13 + 0.7);
+          tl.set(line, { opacity: 1 }, l.t);
+          tl.fromTo(el, { y: 26, scale: 0.96, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, l.t);
+          tl.fromTo(fill, { width: "0%" }, { width: "100%", duration: sweep, ease: "none", immediateRender: false }, l.t);
+          tl.fromTo(el, { opacity: 1 }, { opacity: 0, duration: 0.16, ease: "power1.in", immediateRender: false }, l.end - 0.16);
+          tl.set(line, { opacity: 0 }, l.end);
+        });
+        window.__timelines["karaoke"] = tl;
+      })();
+      </script>
+    </template>
+  </body>
+</html>

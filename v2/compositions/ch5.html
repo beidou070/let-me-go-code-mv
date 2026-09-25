@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; }
+        #ch5-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-es7n" id="root" data-composition-id="ch5" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-lumr" id="ch5-canvas" data-layout-allow-overflow="true" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+        (function () {
+          /* Chapter 5 — chorus A (52.029 – 70.590)
+           * 5a 52.03–54.81 "Oh, let me go~"          jazz club: curtains fly open on 52.90, spotlight slams, fishlings cheer,
+           *                                           neon "Let me go" flickers and locks on at the downbeat 53.82
+           * 5b 54.81–58.96 "I'm making the calls"     retro TOOL-CALL EXCHANGE switchboard: she darts a plug into a jack on every
+           *                                           beat, each lights a tool bulb that pops a note; the 8th is sing() → board flashes
+           * 5c 58.96–63.22 "Let me write the JSON, I'll give it my all"  bulb marquee: J·S·O·N light on the beats as she writes;
+           *                                           fists-up "gambaru", then on 62.16 the board bursts into gold sparks with { } braces
+           * 5d 63.22–67.58 "I'll call the tool, let me do it, honey"  toolbox pops open, tools spring out and form a tiny band
+           *                                           (wrench trumpet, hammer drum, tape-measure trombone), she conducts with the
+           *                                           screwdriver; push-in, wink + heart on "honey" (66.80)
+           * 5e 67.58–70.59 "Code and rhythm never cost no money"  ¥0.00 price tag drops in, "tokens: FREE" stamp on 68.64,
+           *                                           zeros rain as gold coins; code lines scroll by as a music staff
+           */
+          const L = LIB, C = CAST, P = L.P;
+          const ID = "ch5", T0 = 52.029, T1 = 70.59;
+          const TAU = Math.PI * 2;
+          const frac = (v) => v - Math.floor(v);
+          // her rig (the v2 rig keeps a wink's open eye fully open whatever the groove's auto-blink says,
+          // so the v1 blink:0 wrapper is no longer needed)
+          const fish = (ctx, p) => C.fish(ctx, p);
+          // a point in her head frame (rig units: x → her screen-right, h = height above the feet), in WORLD
+          // coordinates; follows headTilt (the rig pivots the head about the chin, h 146). J = C.joints(pose).
+          const headPt = (J, s, x, h) => {
+            const ux = (J.head.x - J.chin.x) / 86, uy = (J.head.y - J.chin.y) / 86; // one rig unit "up" the head
+            return { x: J.chin.x - uy * x + ux * (h - 146), y: J.chin.y + ux * x + uy * (h - 146) };
+          };
+          const NOTE_COLS = [P.cyan, P.pink, P.json, P.mint];
+          const STAGE_Y = 820;
+
+          /* ---------------- the jazz-club stage (shared by 5a / 5c / 5d / 5e) ---------------- */
+          const clubWall = (ctx, t, o = {}) => {
+            const g = ctx.createLinearGradient(0, 0, 0, STAGE_Y);
+            g.addColorStop(0, "#0b0f2e");
+            g.addColorStop(1, "#281a60");
+            ctx.fillStyle = g;
+            ctx.fillRect(-80, -80, 2080, STAGE_Y + 90);
+            const cx = 960, cy = STAGE_Y + 30;
+            // art-deco sunburst
+            ctx.save();
+            ctx.globalAlpha = (o.dim === undefined ? 1 : o.dim) * (0.09 + 0.05 * L.pulse(t, 4));
+            ctx.fillStyle = P.gold;
+            for (let i = 0; i < 20; i++) {
+              const a0 = Math.PI + (i / 20) * Math.PI + 0.02, a1 = a0 + Math.PI / 44;
+              ctx.beginPath();
+              ctx.moveTo(cx, cy);
+              ctx.lineTo(cx + Math.cos(a0) * 1500, cy + Math.sin(a0) * 1500);
+              ctx.lineTo(cx + Math.cos(a1) * 1500, cy + Math.sin(a1) * 1500);
+              ctx.closePath();
+              ctx.fill();
+            }
+            ctx.restore();
+            // proscenium arches
+            ctx.save();
+            ctx.lineWidth = 5;
+            for (const [r, a] of [[560, 0.4], [610, 0.25], [660, 0.15]]) {
+              ctx.strokeStyle = L.rgba(P.gold, a * (o.dim === undefined ? 1 : o.dim));
+              ctx.beginPath();
+              ctx.arc(cx, cy, r, Math.PI, TAU);
+              ctx.stroke();
+            }
+            ctx.restore();
+            // swagged string lights, alternating on the beat
+            const bi = L.beatIndex(t);
+            const cols = [P.amber, P.pink, P.cyan];
+            ctx.save();
+            ctx.strokeStyle = "#141238";
+            ctx.lineWidth = 3;
+            for (let sw = 0; sw < 3; sw++) {
+              ctx.beginPath();
+              for (let k = 0; k <= 20; k++) {
+                const u = k / 20;
+                const x = sw * 640 + u * 640, y = 150 + Math.sin(u * Math.PI) * 70;
+                k ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+              }
+              ctx.stroke();
+            }
+            for (let j = 0; j < 48; j++) {
+              const sw = Math.floor(j / 16), u = ((j % 16) + 0.5) / 16;
+              const x = sw * 640 + u * 640, y = 156 + Math.sin(u * Math.PI) * 70;
+              const on = (j + bi) % 2 === 0 ? 1 : 0.35;
+              const c = cols[j % 3];
+              ctx.fillStyle = L.rgba(c, 0.22 * on);
+              L.circle(ctx, x, y, 18);
+              ctx.fill();
+              ctx.fillStyle = on > 0.5 ? L.mixColor(c, "#ffffff", 0.45) : L.mixColor(c, "#222244", 0.5);
+              L.circle(ctx, x, y, 7);
+              ctx.fill();
+            }
+            ctx.restore();
+          };
+          const footlights = (ctx, t, on = 1) => {
+            // one warm wash along the lip of the stage instead of a glow per bulb
+            if (on > 0) {
+              const g = ctx.createLinearGradient(0, STAGE_Y - 70, 0, STAGE_Y + 30);
+              g.addColorStop(0, L.rgba(P.amber, 0));
+              g.addColorStop(0.75, L.rgba(P.amber, 0.22 * on));
+              g.addColorStop(1, L.rgba(P.amber, 0));
+              ctx.fillStyle = g;
+              ctx.fillRect(-80, STAGE_Y - 70, 2080, 100);
+            }
+            for (let x = 70; x < 1920; x += 120) {
+              ctx.fillStyle = L.rgba(P.amber, 0.25 * on);
+              L.ellipse(ctx, x, STAGE_Y + 4, 34, 18);
+              ctx.fill();
+              ctx.fillStyle = L.mixColor("#5a4a2a", "#fff1c0", on);
+              L.ellipse(ctx, x, STAGE_Y + 8, 18, 9);
+              ctx.fill();
+            }
+          };
+          // local stage curtains: velvet panels gathered by gold tie-backs as they open, scalloped valance on top.
+          // (CAST.curtains draws its right panel as a self-intersecting path, so the closed curtain shows a gap)
+          const curtains = (ctx, open, t) => {
+            const W = L.W, H = L.H;
+            for (const side of [-1, 1]) {
+              ctx.save();
+              if (side > 0) {
+                ctx.translate(W, 0);
+                ctx.scale(-1, 1);
+              }
+              const w = L.lerp(W / 2 + 30, 240, open);
+              const wob = Math.sin(t * 2.2 + side) * 16 * (1 - open) + Math.sin(t * 1.3) * 6;
+              const pinch = w * (1 - 0.42 * open), tieY = H * 0.6;
+              const edge = () => {
+                ctx.beginPath();
+                ctx.moveTo(-20, -20);
+                ctx.lineTo(w, -20);
+                ctx.quadraticCurveTo(w + wob, tieY * 0.5, pinch, tieY);
+                ctx.quadraticCurveTo(pinch + (w - pinch) * 0.6, H * 0.85, w + 24 * open, H + 20);
+                ctx.lineTo(-20, H + 20);
+                ctx.closePath();
+              };
+              edge();
+              const g = ctx.createLinearGradient(0, 0, w, 0);
+              g.addColorStop(0, "#0d1448");
+              g.addColorStop(0.55, "#243a9a");
+              g.addColorStop(1, "#16236a");
+              ctx.fillStyle = g;
+              ctx.fill();
+              ctx.save();
+              edge();
+              ctx.clip();
+              // velvet folds
+              const n = Math.max(3, Math.floor(w / 80));
+              for (let k = 0; k <= n; k++) {
+                const fx = (w * k) / n, fxm = (pinch * k) / n;
+                ctx.strokeStyle = k % 2 ? "rgba(4,6,30,0.5)" : "rgba(120,150,255,0.14)";
+                ctx.lineWidth = k % 2 ? 10 : 6;
+                ctx.beginPath();
+                ctx.moveTo(fx, 0);
+                ctx.quadraticCurveTo(fx + Math.sin(k + t) * 10, tieY * 0.5, fxm, tieY);
+                ctx.quadraticCurveTo(fxm, H * 0.85, fx + 24 * open * (k / n), H);
+                ctx.stroke();
+              }
+              ctx.restore();
+              // gold trim down the inner edge
+              ctx.strokeStyle = P.gold;
+              ctx.lineWidth = 6;
+              ctx.beginPath();
+              ctx.moveTo(w, 0);
+              ctx.quadraticCurveTo(w + wob, tieY * 0.5, pinch, tieY);
+              ctx.quadraticCurveTo(pinch + (w - pinch) * 0.6, H * 0.85, w + 24 * open, H);
+              ctx.stroke();
+              if (open > 0.3) {
+                ctx.globalAlpha = L.seg(open, 0.3, 0.7);
+                ctx.fillStyle = P.gold;
+                L.rr(ctx, pinch - 70, tieY - 12, 90, 24, 12);
+                ctx.fill();
+                L.circle(ctx, pinch + 6, tieY, 14);
+                ctx.fill();
+                ctx.strokeStyle = "#8a5a1a";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+            // valance with gold fringe
+            ctx.fillStyle = "#16236a";
+            ctx.beginPath();
+            ctx.moveTo(-20, -20);
+            ctx.lineTo(W + 20, -20);
+            ctx.lineTo(W + 20, 90);
+            for (let k = 12; k >= 0; k--) ctx.quadraticCurveTo(W * ((k + 0.5) / 12), 132, W * (k / 12), 90);
+            ctx.lineTo(-20, 90);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = P.gold;
+            ctx.lineWidth = 5;
+            ctx.stroke();
+          };
+          const FISH_COLS = ["#6fb8ff", "#ffd166", "#ff8fc0", "#6fffc8", "#9b7bff", "#ffb070"];
+          const audience = (ctx, t, cheer) => {
+            // back row peeks above the lyric band; front row sits under it
+            for (const [row, y0, s, n, dx] of [[0, 948, 0.95, 10, 30], [1, 1045, 1.3, 8, 120]]) {
+              for (let i = 0; i < n; i++) {
+                const x = dx + i * (1920 / n) + (row ? 0 : 40);
+                const hop = cheer * Math.max(0, Math.sin((L.bp(t) + L.hash(i + row * 9) * 0.6) * Math.PI)) * 22;
+                C.fishling(ctx, x, y0 - hop, s, {
+                  t,
+                  color: FISH_COLS[(i * 2 + row) % FISH_COLS.length],
+                  cheer,
+                  face: cheer > 0.5 ? "happy" : "o",
+                  flip: x > 960,
+                });
+              }
+            }
+          };
+
+          /* =====================================================================
+           * 5a — Oh, let me go~ : curtains, spotlight, neon
+           * ===================================================================== */
+          const A0 = T0, A1 = 54.806;
+          const OPEN0 = 52.36, OPEN1 = 52.895, NEON0 = 53.383, NEON1 = 53.824;
+          const shotA = (ctx, t) => {
+            const open = L.ep(t, OPEN0, OPEN1, "outCubic");
+            const lights = L.seg(t, OPEN1 - 0.05, OPEN1 + 0.08);
+            const zoom = L.lerp(1.0, 1.06, L.ep(t, OPEN1, A1, "inOutSine")) + 0.04 * L.barPulse(t, 6) * (t >= NEON1 ? 1 : 0);
+            L.cam(ctx, { zoom, x: 960, y: 560 });
+            clubWall(ctx, t, { dim: 0.4 + 0.6 * lights });
+            C.stageFloor(ctx, STAGE_Y);
+            footlights(ctx, t, lights);
+            // neon sign flickers on
+            const on = t < NEON0 ? 0 : t < NEON1 ? (L.hash(Math.floor(t * 17)) > 0.45 ? 0.9 : 0.06) : 0.88 + 0.12 * L.pulse(t, 5);
+            C.neonSign(ctx, 960, 222, "Let me go", { color: P.pink, size: 100, on });
+            if (t >= NEON1) {
+              const k = L.seg(t, NEON1, NEON1 + 0.5);
+              for (let i = 0; i < 10; i++) {
+                const a = (i / 10) * TAU;
+                L.sparkle(ctx, 960 + Math.cos(a) * (240 + 200 * k), 222 + Math.sin(a) * (90 + 90 * k), 30 * (1 - k), i % 2 ? P.pink : "#fff");
+              }
+            }
+            // spotlight slams on
+            const slam = t < OPEN1 ? 0 : 0.36 + 0.5 * Math.exp(-(t - OPEN1) * 5);
+            if (slam > 0) {
+              C.spotlight(ctx, 960, STAGE_Y - 4, { w: 620, alpha: slam, top: -60 });
+              L.glow(ctx, 960, 560, 440, "#fff2d0", 0.3 * lights);
+            }
+            // her
+            const g = C.groove(t, "sing", 1);
+            const big = L.ep(t, NEON1 - 0.12, NEON1 + 0.06, "outBack");
+            const sway = L.sway(t);
+            fish(ctx, {
+              ...g,
+              x: 960, y: STAGE_Y - 4, s: 1.36,
+              face: t >= NEON1 && t < NEON1 + 0.55 ? "wink" : "sing",
+              mouth: t < OPEN1 ? 0.25 : 0.45 + 0.45 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              sparkle: t >= NEON1,
+              blush: 1.2,
+              rArm: t < OPEN1 ? 40 : L.lerp(150 + sway * 12, 172, big), rBend: t < OPEN1 ? 40 : L.lerp(10, 0, big),
+              legR: big * 30 * (1 - L.seg(t, NEON1 + 0.3, NEON1 + 0.6)),
+            });
+            // curtains fly open in front of everything
+            curtains(ctx, open, t);
+            // a waiting pool of light on the closed curtain
+            if (open < 0.5) L.glow(ctx, 960, 560, 360, "#fff0c8", 0.25 * (1 - open * 2));
+            if (lights < 1) {
+              ctx.fillStyle = `rgba(4,6,22,${0.4 * (1 - lights)})`;
+              ctx.fillRect(-80, -80, 2080, 1240);
+            }
+            audience(ctx, t, lights);
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 5b — I'm making the calls : the TOOL-CALL EXCHANGE switchboard
+           * ===================================================================== */
+          const B0 = A1, B1 = 58.958;
+          const PLUG_T = [55.217, 55.681, 56.146, 56.61, 57.075, 57.539, 58.003, 58.468];
+          const TOOLS = ["weather", "search", "calc", "email", "maps", "code", "files", "sing()"];
+          const TOOL_COL = [P.amber, P.cyan, P.mint, "#ffb070", P.red, P.violet, P.json, P.pink];
+          const CORD_COL = [P.red, P.amber, P.mint, P.cyan, P.violet, "#ff9f5a", P.json, P.pink];
+          const unitPos = (i) => {
+            const c = i % 4, r = Math.floor(i / 4);
+            const x = 800 + c * 290, y = 255 + r * 250;
+            return { x, y, jx: x, jy: y + 132 };
+          };
+          const anchorPos = (i) => ({ x: 740 + i * 136, y: 800 });
+
+          const toolIcon = (ctx, kind, x, y, s, alpha = 1) => {
+            ctx.save();
+            ctx.globalAlpha *= alpha;
+            ctx.translate(x, y);
+            ctx.scale(s, s);
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            if (kind === "weather") {
+              ctx.fillStyle = P.amber;
+              L.circle(ctx, -8, -8, 15);
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = "#fff";
+              L.ellipse(ctx, 7, 8, 24, 13);
+              ctx.fill();
+              ctx.stroke();
+            } else if (kind === "search") {
+              ctx.fillStyle = "#dff4ff";
+              L.circle(ctx, -6, -6, 15);
+              ctx.fill();
+              ctx.stroke();
+              ctx.lineWidth = 8;
+              ctx.beginPath();
+              ctx.moveTo(6, 6);
+              ctx.lineTo(19, 19);
+              ctx.stroke();
+            } else if (kind === "calc") {
+              L.rr(ctx, -18, -24, 36, 48, 6);
+              ctx.fillStyle = P.mint;
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = P.ink;
+              ctx.fillRect(-12, -18, 24, 9);
+              for (let a = 0; a < 3; a++) for (let b = 0; b < 2; b++) ctx.fillRect(-12 + a * 9, -3 + b * 10, 6, 6);
+            } else if (kind === "email") {
+              L.rr(ctx, -22, -15, 44, 30, 4);
+              ctx.fillStyle = "#fff";
+              ctx.fill();
+              ctx.stroke();
+              ctx.beginPath();
+              ctx.moveTo(-22, -13);
+              ctx.lineTo(0, 4);
+              ctx.lineTo(22, -13);
+              ctx.stroke();
+            } else if (kind === "maps") {
+              ctx.beginPath();
+              ctx.arc(0, -8, 15, Math.PI * 0.85, Math.PI * 2.15);
+              ctx.lineTo(0, 22);
+              ctx.closePath();
+              ctx.fillStyle = P.red;
+              ctx.fill();
+              ctx.stroke();
+              ctx.fillStyle = "#fff";
+              L.circle(ctx, 0, -8, 5);
+              ctx.fill();
+            } else if (kind === "code") {
+              L.text(ctx, "</>", 0, 1, { size: 30, font: L.FONT.mono, color: P.ink, weight: 700 });
+            } else if (kind === "files") {
+              ctx.beginPath();
+              ctx.moveTo(-22, -14);
+              ctx.lineTo(-6, -14);
+              ctx.lineTo(-2, -9);
+              ctx.lineTo(22, -9);
+              ctx.lineTo(22, 16);
+              ctx.lineTo(-22, 16);
+              ctx.closePath();
+              ctx.fillStyle = P.json;
+              ctx.fill();
+              ctx.stroke();
+            } else {
+              L.note(ctx, -6, 14, 34, P.ink, true, 0);
+            }
+            ctx.restore();
+          };
+
+          const switchboard = (ctx, t) => {
+            // wood-panelled wall
+            const g = ctx.createLinearGradient(0, 0, 0, 1080);
+            g.addColorStop(0, "#2a1636");
+            g.addColorStop(1, "#140a22");
+            ctx.fillStyle = g;
+            ctx.fillRect(-80, -80, 2080, 1240);
+            ctx.strokeStyle = "rgba(0,0,0,0.25)";
+            ctx.lineWidth = 4;
+            for (let x = 0; x < 1920; x += 150) {
+              ctx.beginPath();
+              ctx.moveTo(x, 0);
+              ctx.lineTo(x, 1080);
+              ctx.stroke();
+            }
+            // warm lamp over her
+            L.glow(ctx, 330, 420, 520, P.amber, 0.3);
+            // panel
+            L.rr(ctx, 612, 72, 1236, 690, 30);
+            ctx.fillStyle = "#6a3a1e";
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.rr(ctx, 640, 100, 1180, 634, 18);
+            ctx.fillStyle = "#101634";
+            ctx.fill();
+            ctx.fillStyle = "#a8742e";
+            ctx.fillRect(612, 72, 1236, 6);
+            // header plate
+            L.rr(ctx, 1030, 108, 400, 58, 10);
+            ctx.fillStyle = "#c8943a";
+            ctx.fill();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.text(ctx, "TOOL-CALL EXCHANGE", 1230, 139, { size: 44, font: L.FONT.tall, color: "#2a1606", weight: 400, tracking: 3 });
+            // desk
+            const dg = ctx.createLinearGradient(0, 762, 0, 1080);
+            dg.addColorStop(0, "#8a5430");
+            dg.addColorStop(0.08, "#5a3018");
+            dg.addColorStop(1, "#1c0e08");
+            ctx.fillStyle = dg;
+            ctx.beginPath();
+            ctx.moveTo(600, 762);
+            ctx.lineTo(1920, 762);
+            ctx.lineTo(1920, 1080);
+            ctx.lineTo(600, 1080);
+            ctx.closePath();
+            ctx.fill();
+            ctx.fillStyle = "#c8945a";
+            ctx.fillRect(600, 760, 1320, 5);
+            for (let i = 0; i < 8; i++) {
+              const a = anchorPos(i);
+              ctx.fillStyle = "#0a0610";
+              L.ellipse(ctx, a.x, a.y, 16, 7);
+              ctx.fill();
+            }
+          };
+
+          const plugHead = (ctx, x, y, col, ang = 0) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            L.rr(ctx, -11, -8, 22, 44, 7);
+            ctx.fillStyle = col;
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            ctx.fillStyle = "#d8dce8";
+            ctx.fillRect(-5, -22, 10, 16);
+            ctx.restore();
+          };
+          const cord = (ctx, ax, ay, bx, by, col, swing) => {
+            const mx = (ax + bx) / 2 + swing, my = Math.max(ay, by) + 60 + Math.abs(bx - ax) * 0.12;
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.strokeStyle = P.ink;
+            ctx.lineWidth = 11;
+            ctx.beginPath();
+            ctx.moveTo(ax, ay);
+            ctx.quadraticCurveTo(mx, my, bx, by);
+            ctx.stroke();
+            ctx.strokeStyle = col;
+            ctx.lineWidth = 6;
+            ctx.stroke();
+            ctx.restore();
+          };
+
+          const shotB = (ctx, t) => {
+            const zoom = L.lerp(1.0, 1.05, L.ep(t, B0, B1, "inOutSine")) + 0.03 * L.barPulse(t, 6);
+            L.cam(ctx, { zoom, x: L.lerp(930, 1000, L.ep(t, B0, B1, "inOutSine")), y: 540 });
+            switchboard(ctx, t);
+            const lastK = L.seg(t, PLUG_T[7], PLUG_T[7] + 0.5);
+            // bulbs, labels, jacks
+            for (let i = 0; i < 8; i++) {
+              const u = unitPos(i);
+              const lit = t >= PLUG_T[i];
+              const age = t - PLUG_T[i];
+              const pop = lit ? L.ease.outBack(L.seg(age, 0, 0.25)) : 0;
+              const flash = t >= PLUG_T[7] ? 0.6 + 0.4 * L.pulse(t, 5) : 1;
+              if (lit) L.glow(ctx, u.x, u.y, 150 + 60 * Math.exp(-age * 4), TOOL_COL[i], 0.5 * flash);
+              L.circle(ctx, u.x, u.y, 48 * (1 + 0.12 * pop * Math.exp(-age * 5)));
+              ctx.fillStyle = lit ? L.mixColor(TOOL_COL[i], "#ffffff", 0.45 + 0.3 * Math.exp(-age * 4)) : "#262a4a";
+              ctx.fill();
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.strokeStyle = "rgba(255,255,255,0.5)";
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.arc(u.x, u.y, 36, Math.PI * 1.1, Math.PI * 1.45);
+              ctx.stroke();
+              toolIcon(ctx, ["weather", "search", "calc", "email", "maps", "code", "files", "sing"][i], u.x, u.y, 1.1, lit ? 1 : 0.35);
+              // brass label
+              L.rr(ctx, u.x - 88, u.y + 62, 176, 38, 8);
+              ctx.fillStyle = lit ? "#e6b95c" : "#8a6a3a";
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              L.text(ctx, TOOLS[i], u.x, u.y + 82, { size: 26, font: L.FONT.mono, color: "#241404", weight: 700 });
+              // jack
+              L.circle(ctx, u.jx, u.jy, 22);
+              ctx.fillStyle = "#c8943a";
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              L.circle(ctx, u.jx, u.jy, 11);
+              ctx.fillStyle = "#05030c";
+              ctx.fill();
+              // a note pops out of each bulb as it lights (tool → music)
+              if (lit && age < 2.2) {
+                ctx.save();
+                ctx.globalAlpha = 1 - L.seg(age, 1.2, 2.2);
+                L.note(ctx, u.x + 40 + age * 40, u.y - 60 - age * 110, 46 * L.ease.outBack(L.seg(age, 0.05, 0.35)), NOTE_COLS[i % 4], i % 2 === 0, Math.sin(age * 5) * 0.3);
+                ctx.restore();
+              }
+            }
+            if (lastK > 0) {
+              ctx.save();
+              ctx.globalAlpha = 0.28 * (1 - lastK);
+              ctx.fillStyle = P.pink;
+              ctx.fillRect(-80, -80, 2080, 1240);
+              ctx.restore();
+            }
+            // her: phone at her ear, a fistful of cords in the other hand
+            const k = L.beatPhase(t);
+            const done = t >= PLUG_T[7] + 0.05;
+            const rArm = done ? 165 : k < 0.55 ? L.lerp(78, 150, L.ease.inOutSine(k / 0.55)) : L.lerp(150, 78, L.ease.inQuad((k - 0.55) / 0.45));
+            const g = C.groove(t, "swing", 0.5);
+            const hands = fish(ctx, {
+              ...g,
+              x: 330, y: 905, s: 1.42, dy: 0, rot: 0.03 * L.sway(t),
+              face: done ? "wink" : L.barPulse(t, 6) > 0.5 ? "wink" : "sing",
+              mouth: done ? 0.7 : 0.3 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              sparkle: done,
+              lArm: 30, lBend: 132, lHold: "phone",
+              rArm, rBend: done ? 0 : 18,
+              look: [1, -0.5],
+            });
+            // cords: in her hand until thrown, then flying, then plugged & swinging
+            for (let i = 0; i < 8; i++) {
+              const a = anchorPos(i), u = unitPos(i), tb = PLUG_T[i];
+              let px, py, ang = 0;
+              if (t < tb - 0.2) {
+                px = hands.r.x + (i - 3.5) * 3;
+                py = hands.r.y + 6;
+                ang = 0.5;
+              } else if (t < tb) {
+                const f = L.ease.inOutQuad(L.seg(t, tb - 0.2, tb));
+                px = L.lerp(hands.r.x, u.jx, f);
+                py = L.lerp(hands.r.y, u.jy + 26, f) - Math.sin(f * Math.PI) * 150;
+                ang = L.lerp(0.5, 0, f) + Math.sin(f * Math.PI) * 1.2;
+              } else {
+                px = u.jx;
+                py = u.jy + 26;
+              }
+              const age = t - tb;
+              const swing = age > 0 ? Math.sin(age * 11) * Math.exp(-age * 2.6) * 90 : 0;
+              cord(ctx, a.x, a.y, px, py + 22, CORD_COL[i], swing);
+              plugHead(ctx, px, py, CORD_COL[i], ang);
+              if (age >= 0 && age < 0.35) {
+                const s = L.seg(age, 0, 0.35);
+                for (let q = 0; q < 8; q++) {
+                  const aa = (q / 8) * TAU;
+                  L.sparkle(ctx, u.jx + Math.cos(aa) * 70 * s, u.jy + Math.sin(aa) * 70 * s, 16 * (1 - s), q % 2 ? "#fff" : TOOL_COL[i]);
+                }
+              }
+            }
+            // the call that matters: sing()
+            if (t >= PLUG_T[7]) {
+              const u = unitPos(7);
+              C.bubble(ctx, u.x - 20, u.y - 118, "connected!", { size: 34, pop: L.seg(t, PLUG_T[7], PLUG_T[7] + 0.2), fill: "#ffe3f2", tail: 40 });
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 5c — Let me write the JSON, I'll give it my all : bulb marquee
+           * ===================================================================== */
+          const C0 = B1, C1 = 63.224;
+          const LETTER_T = [59.397, 59.861, 60.325, 60.79];
+          const GAMBARU = 61.254, BURST = 62.16;
+          const GLYPH = {
+            J: ["00111", "00010", "00010", "00010", "10010", "10010", "01100"],
+            S: ["01111", "10000", "10000", "01110", "00001", "00001", "11110"],
+            O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
+            N: ["10001", "11001", "10101", "10011", "10001", "10001", "10001"],
+          };
+          const MQ = { x: 600, y: 96, w: 1250, h: 500, pitch: 46, cx: 1225, top: 196 };
+          const DOTS = [];
+          "JSON".split("").forEach((ch, li) => {
+            GLYPH[ch].forEach((row, r) => {
+              for (let c = 0; c < 5; c++) {
+                const col = li * 6 + c;
+                DOTS.push({ li, c, r, on: row[c] === "1", x: MQ.cx + (col - 11) * MQ.pitch, y: MQ.top + r * MQ.pitch });
+              }
+            });
+          });
+          const dotLit = (d, t) => {
+            if (!d.on) return 0;
+            const tb = LETTER_T[d.li];
+            const sweep = L.seg(t, tb - 0.3, tb + 0.02);
+            const order = (d.c + d.r * 0.35) / (4 + 6 * 0.35);
+            return sweep >= order ? 1 : 0;
+          };
+          const perimeter = (u) => {
+            const { x, y, w, h } = MQ, per = 2 * (w + h);
+            let d = u * per;
+            if (d < w) return [x + d, y];
+            d -= w;
+            if (d < h) return [x + w, y + d];
+            d -= h;
+            if (d < w) return [x + w - d, y + h];
+            d -= w;
+            return [x, y + h - d];
+          };
+
+          const shotC = (ctx, t) => {
+            const shake = BURST <= t ? 16 * Math.exp(-(t - BURST) * 6) : t >= GAMBARU ? 2.5 : 0;
+            const zoom = 1.0 + 0.03 * L.barPulse(t, 6) + 0.05 * L.ep(t, GAMBARU, BURST, "inQuad");
+            L.cam(ctx, { zoom, x: 960, y: 540, shake, t });
+            clubWall(ctx, t, { dim: 0.6 });
+            C.stageFloor(ctx, STAGE_Y);
+            footlights(ctx, t, 1);
+            // marquee frame
+            const gold = L.seg(t, BURST, BURST + 0.15);
+            L.glow(ctx, MQ.cx, MQ.y + MQ.h / 2, 660, P.json, 0.1 + 0.25 * gold * Math.exp(-(t - BURST) * 1.5));
+            L.rr(ctx, MQ.x - 20, MQ.y - 20, MQ.w + 40, MQ.h + 40, 34);
+            ctx.fillStyle = "#5a1430";
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.rr(ctx, MQ.x + 26, MQ.y + 26, MQ.w - 52, MQ.h - 52, 18);
+            ctx.fillStyle = "#12081e";
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.gold;
+            ctx.stroke();
+            // hanging chains
+            ctx.strokeStyle = "#8a7a5a";
+            ctx.lineWidth = 5;
+            for (const hx of [MQ.x + 120, MQ.x + MQ.w - 120]) {
+              ctx.beginPath();
+              ctx.moveTo(hx, -20);
+              ctx.lineTo(hx, MQ.y - 20);
+              ctx.stroke();
+            }
+            // chaser bulbs round the frame
+            const speed = t >= GAMBARU ? 10 : 4;
+            const chase = Math.floor(L.bp(t) * speed);
+            const NB = 72;
+            for (let j = 0; j < NB; j++) {
+              const [bx, by] = perimeter(j / NB);
+              const on = t >= BURST ? 1 : (j + chase) % 3 === 0 ? 1 : 0.2;
+              if (on > 0.5) {
+                ctx.fillStyle = L.rgba(P.amber, 0.35);
+                L.circle(ctx, bx, by, 16);
+                ctx.fill();
+              }
+              ctx.fillStyle = on > 0.5 ? "#fff3c8" : "#6a4a2a";
+              L.circle(ctx, bx, by, 8);
+              ctx.fill();
+            }
+            // the dot-matrix JSON
+            const flick = t >= GAMBARU && t < BURST ? 0.6 + 0.4 * Math.abs(Math.sin(t * 40)) : 1;
+            for (const d of DOTS) {
+              const lit = dotLit(d, t);
+              if (lit) {
+                const col = t >= BURST ? P.json : "#ffe9b0";
+                ctx.fillStyle = L.rgba(col, 0.28 * flick);
+                L.circle(ctx, d.x, d.y, 28);
+                ctx.fill();
+                ctx.fillStyle = L.mixColor(col, "#ffffff", 0.5 * flick);
+                L.circle(ctx, d.x, d.y, 15);
+                ctx.fill();
+              } else {
+                ctx.fillStyle = "#2e2034";
+                L.circle(ctx, d.x, d.y, 13);
+                ctx.fill();
+                ctx.fillStyle = "rgba(255,230,180,0.08)";
+                L.circle(ctx, d.x - 4, d.y - 4, 4);
+                ctx.fill();
+              }
+            }
+            // { } slam in on the burst
+            if (t >= BURST - 0.08) {
+              const k = L.seg(t, BURST - 0.08, BURST + 0.04);
+              const sc = L.lerp(2.4, 1, L.ease.inCubic(k)) + 0.06 * Math.exp(-(t - BURST) * 8);
+              ctx.save();
+              ctx.globalAlpha = k;
+              C.brace(ctx, MQ.cx - 556, MQ.top + 138, 370 * sc, 1, { glow: 24, color: P.json });
+              C.brace(ctx, MQ.cx + 556, MQ.top + 138, 370 * sc, -1, { glow: 24, color: P.json });
+              ctx.restore();
+            }
+            // her
+            const writing = t < LETTER_T[3] + 0.25;
+            const gam = t >= GAMBARU && t < BURST;
+            const allIn = t >= BURST;
+            const g = C.groove(t, writing ? "swing" : "idle", 0.5);
+            const jit = gam ? Math.sin(t * 70) * 3 : 0;
+            const up = L.ep(t, BURST - 0.1, BURST + 0.05, "outBack");
+            let pose;
+            if (writing) {
+              pose = {
+                face: "happy", mouth: 0.3 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+                rArm: 118 + Math.sin(t * 16) * 14, rBend: 36 + Math.cos(t * 16) * 14, rHold: "pen",
+                lArm: 32, lBend: 135, lHold: "mic",
+              };
+            } else if (t < GAMBARU) {
+              pose = { face: "sing", mouth: 0.5, lArm: 32, lBend: 135, lHold: "mic", rArm: 70 + L.sway(t) * 20, rBend: 30 };
+            } else if (gam) {
+              pose = { face: "determined", mouth: 0.15, lArm: 34, lBend: 112, rArm: 34, rBend: 112, sweat: 0 };
+            } else {
+              pose = {
+                face: up > 0.5 ? "determined" : "determined", mouth: 0.85, sparkle: false,
+                lArm: L.lerp(34, 150, up), lBend: L.lerp(112, 30, up), rArm: L.lerp(34, 150, up), rBend: L.lerp(112, 30, up),
+                legL: 26 * up * (1 - L.seg(t, BURST + 0.35, BURST + 0.7)), legR: 26 * up * (1 - L.seg(t, BURST + 0.35, BURST + 0.7)),
+              };
+            }
+            // power aura while she charges
+            if (gam || allIn) {
+              const ch = gam ? L.seg(t, GAMBARU, BURST) : 1 - L.seg(t, BURST, BURST + 1);
+              L.glow(ctx, 380, 600, 260 + 200 * ch, P.json, 0.35 * ch);
+              for (let i = 0; i < 10; i++) {
+                const ph = frac(t * 1.8 + L.hash(i));
+                L.sparkle(ctx, 380 + (L.hash(i * 3) - 0.5) * 360, 820 - ph * 480, 14 * Math.sin(ph * Math.PI) * ch, P.json);
+              }
+            }
+            L.glow(ctx, 380, 560, 420, "#ffe6c0", 0.22);
+            const herPose = {
+              ...g, ...pose,
+              x: 380 + jit, y: STAGE_Y - 4 - (allIn ? 40 * Math.sin(Math.PI * L.seg(t, BURST - 0.05, BURST + 0.4)) : 0),
+              s: 1.42, dy: 0, blush: gam || allIn ? 1.3 : 1,
+            };
+            fish(ctx, herPose);
+            // gold ink trail from the pen to the letter being lit
+            if (writing && t > C0 + 0.25) {
+              const li = Math.max(0, Math.min(3, LETTER_T.findIndex((tb) => t < tb + 0.1)));
+              const tb = LETTER_T[li < 0 ? 3 : li];
+              const sweep = L.seg(t, tb - 0.3, tb + 0.02);
+              const tx = MQ.cx + (li * 6 + sweep * 4 - 11) * MQ.pitch, ty = MQ.top + 3 * MQ.pitch;
+              // the trail leaves the top of the pen: the rig holds it in the hand at (forearm lean)·0.4 − 0.5 rad,
+              // cap end 52 rig units above the grip
+              const J = C.joints(herPose), rot = herPose.rot || 0;
+              const pa = (J.rHandAng - rot + Math.PI / 2) * 0.4 - 0.5 + rot;
+              const hx = J.rHand.x + Math.sin(pa) * 52 * herPose.s, hy = J.rHand.y - Math.cos(pa) * 52 * herPose.s;
+              for (let i = 0; i < 12; i++) {
+                const u = frac(i / 12 + t * 2.2);
+                const px = L.lerp(hx, tx, u), py = L.lerp(hy, ty, u) - Math.sin(u * Math.PI) * 120;
+                L.sparkle(ctx, px, py, 12 * Math.sin(u * Math.PI) + 3, i % 2 ? P.json : "#fff");
+              }
+            }
+            // the burst: every lit bulb shoots gold sparks
+            if (allIn) {
+              const tau = t - BURST;
+              if (tau < 0.5) L.burst(ctx, MQ.cx, MQ.top + 138, { n: 32, rot: tau * 0.5, alpha: 0.4 * (1 - tau / 0.5), color: P.json, r0: 120, r1: 1400 });
+              if (tau < 0.2) {
+                ctx.save();
+                ctx.globalAlpha = 0.5 * (1 - tau / 0.2);
+                ctx.fillStyle = "#fff6d8";
+                ctx.fillRect(-80, -80, 2080, 1240);
+                ctx.restore();
+              }
+              const lits = DOTS.filter((d) => d.on);
+              lits.forEach((d, i) => {
+                for (let q = 0; q < 2; q++) {
+                  const a = L.hash(i * 7 + q * 3) * TAU;
+                  const v = 380 + 820 * L.hash(i * 3 + q * 11);
+                  const px = d.x + Math.cos(a) * v * tau, py = d.y + Math.sin(a) * v * tau + 1300 * tau * tau;
+                  if (py > 1100) continue;
+                  const life = 1 - L.seg(tau, 0.5, 1.05);
+                  if (life <= 0) continue;
+                  L.sparkle(ctx, px, py, (10 + 8 * L.hash(i + q)) * life, q ? P.json : "#fff2c0");
+                }
+              });
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 5d — I'll call the tool, let me do it, honey : toolbox band
+           * ===================================================================== */
+          const D0 = C1, D1 = 67.576;
+          const LID = 63.553, OUT = [64.017, 64.482, 64.946, 65.411], HONEY = 66.804;
+          const TB = { x: 1260, y: STAGE_Y - 2, w: 400, h: 170 };
+          const FX_D = 510;
+          const eyes = (ctx, x, y, s, look = 0) => {
+            for (const ex of [-1, 1]) {
+              L.ellipse(ctx, x + ex * 9 * s, y, 7 * s, 9 * s);
+              ctx.fillStyle = "#fff";
+              ctx.fill();
+              ctx.lineWidth = 2.5;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.fillStyle = P.ink;
+              L.circle(ctx, x + ex * 9 * s + look * 2 * s, y + 1.5 * s, 3.8 * s);
+              ctx.fill();
+            }
+          };
+          const flyTo = (t, tb, from, to) => {
+            const f = L.seg(t, tb - 0.36, tb);
+            return { x: L.lerp(from[0], to[0], f), y: L.lerp(from[1], to[1], f) - Math.sin(f * Math.PI) * 260, f, spin: (1 - f) * TAU };
+          };
+          const toolbox = (ctx, t) => {
+            const { x, y, w, h } = TB;
+            const open = L.ease.outBack(L.seg(t, LID - 0.05, LID + 0.2));
+            // body (drawn after the lid, which is hinged at the back)
+            const drawBody = () => {
+            L.rr(ctx, x - w / 2, y - h, w, h, 16);
+            ctx.fillStyle = "#d8343f";
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            ctx.fillStyle = "#a8202e";
+            ctx.fillRect(x - w / 2 + 6, y - h + 60, w - 12, 16);
+            ctx.fillStyle = "rgba(255,255,255,0.25)";
+            ctx.fillRect(x - w / 2 + 20, y - h + 14, w - 40, 8);
+            // interior
+            if (open > 0.05) {
+              L.ellipse(ctx, x, y - h + 4, w / 2 - 14, 14);
+              ctx.fillStyle = "#1a0810";
+              ctx.fill();
+            }
+            // latches
+            for (const lx of [-120, 120]) {
+              L.rr(ctx, x + lx - 16, y - h - 6, 32, 24, 5);
+              ctx.fillStyle = "#cfd6ea";
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+            }
+            };
+            // lid: closed it is a slab with a handle; it flips up and back, showing its dark inner face
+            {
+              const lh = L.lerp(44, 170, open);
+              const lx0 = x - w / 2 - 6, lw = w + 12, inner = open > 0.3;
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(lx0, y - h + 2);
+              ctx.lineTo(lx0 + lw, y - h + 2);
+              ctx.lineTo(lx0 + lw - 14 * open, y - h - lh);
+              ctx.lineTo(lx0 + 14 * open, y - h - lh);
+              ctx.closePath();
+              ctx.fillStyle = inner ? "#8a1826" : "#e84450";
+              ctx.fill();
+              ctx.lineWidth = 6;
+              ctx.lineJoin = "round";
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              if (inner) {
+                L.rr(ctx, lx0 + 34, y - h - lh + 22, lw - 68, lh - 40, 10);
+                ctx.strokeStyle = "rgba(255,140,150,0.45)";
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                // empty foam slots where the band used to be stored
+                ctx.fillStyle = "rgba(20,4,10,0.45)";
+                for (let q = 0; q < 4; q++) {
+                  L.rr(ctx, lx0 + 80 + q * 75, y - h - lh + 40, 24, Math.max(4, lh - 80), 8);
+                  ctx.fill();
+                }
+              } else {
+                ctx.lineWidth = 10;
+                ctx.beginPath();
+                ctx.moveTo(x - 60, y - h - lh);
+                ctx.quadraticCurveTo(x, y - h - lh - 56, x + 60, y - h - lh);
+                ctx.stroke();
+                ctx.strokeStyle = "#cfd6ea";
+                ctx.lineWidth = 5;
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+            drawBody();
+            // POP!
+            const pk = L.seg(t, LID, LID + 0.4);
+            if (pk > 0 && pk < 1) {
+              L.burst(ctx, x, y - h - 40, { n: 16, alpha: 0.5 * (1 - pk), color: "#fff", r0: 80 + 60 * pk, r1: 260 + 160 * pk, width: 0.08 });
+              L.text(ctx, "POP!", x + 170, y - h - 120 - 40 * pk, { size: 90 * L.ease.outBack(L.seg(pk, 0, 0.4)), font: L.FONT.block, color: P.json, stroke: P.ink, strokeW: 12, weight: 400, alpha: 1 - L.seg(pk, 0.7, 1) });
+            }
+          };
+          // tiny-band members
+          const trumpetWrench = (ctx, x, y, t, s) => {
+            const tilt = -0.55 + 0.12 * Math.sin(L.bp(t) * Math.PI);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(tilt);
+            C.wrench(ctx, 0, -40 * s, s, 4);
+            eyes(ctx, 0, -20 * s, s * 0.9, 1);
+            ctx.restore();
+            // notes blowing out of the jaw
+            const jx = x + Math.sin(tilt) * 84 * s, jy = y - Math.cos(tilt) * 84 * s;
+            L.glow(ctx, jx, jy, 90, P.amber, 0.25 * L.pulse(t, 6));
+            const b1 = L.beatIndex(t);
+            for (let b = b1 - 3; b <= b1; b++) {
+              const age = t - L.beatTime(b);
+              if (age < 0 || age > 1.4 || L.beatTime(b) < OUT[0] + 0.1) continue;
+              ctx.save();
+              ctx.globalAlpha = 1 - age / 1.4;
+              L.note(ctx, jx - 40 - age * 180, jy - 30 - age * 150 + Math.sin(age * 8) * 10, 42, NOTE_COLS[((b % 4) + 4) % 4], b % 2 === 0, -0.2);
+              ctx.restore();
+            }
+          };
+          const drumHammer = (ctx, x, y, t, s) => {
+            // rocks back mid-beat, whacks the toolbox on the beat
+            const ph = L.beatPhase(t);
+            const ang = L.lerp(-0.95, 0.2, Math.sin(ph * Math.PI));
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            L.rr(ctx, -9 * s, -150 * s, 18 * s, 150 * s, 8 * s);
+            ctx.fillStyle = "#c8844a";
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.rr(ctx, -52 * s, -190 * s, 104 * s, 44 * s, 10 * s);
+            ctx.fillStyle = "#9aa4c0";
+            ctx.fill();
+            ctx.stroke();
+            eyes(ctx, 0, -168 * s, s * 0.85, -1);
+            ctx.restore();
+            // BANG on the beat
+            const hit = L.pulse(t, 9);
+            if (hit > 0.2) {
+              const hx = x + Math.sin(-0.95) * 170 * s, hy = y - Math.cos(-0.95) * 170 * s;
+              L.star(ctx, hx, hy, 46 * hit + 10, 20 * hit + 5, 7, t);
+              ctx.fillStyle = P.json;
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+            }
+          };
+          const tromboneTape = (ctx, x, y, t, s) => {
+            const slide = 0.5 + 0.5 * Math.cos(L.bp(t) * Math.PI);
+            const len = (40 + 120 * slide) * s;
+            ctx.save();
+            ctx.translate(x, y);
+            // tape
+            ctx.fillStyle = P.json;
+            ctx.fillRect(30 * s, 18 * s, len, 16 * s);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = P.ink;
+            ctx.strokeRect(30 * s, 18 * s, len, 16 * s);
+            ctx.fillStyle = P.ink;
+            for (let k = 40; k < len / s + 30; k += 14) ctx.fillRect(k * s, 18 * s, 2, 6 * s);
+            ctx.fillStyle = "#9aa4c0";
+            ctx.fillRect(30 * s + len - 4, 12 * s, 10 * s, 28 * s);
+            // case
+            L.rr(ctx, -48 * s, -46 * s, 96 * s, 92 * s, 24 * s);
+            ctx.fillStyle = "#ffc83a";
+            ctx.fill();
+            ctx.lineWidth = 5;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.circle(ctx, 0, 6 * s, 22 * s);
+            ctx.fillStyle = "#2a2a3a";
+            ctx.fill();
+            eyes(ctx, 0, -22 * s, s, 1);
+            ctx.restore();
+            if (L.pulse(t, 6) > 0.4) L.note(ctx, x + 30 * s + len + 30, y - 30 - 40 * (1 - L.pulse(t, 6)), 36, P.mint, false, 0.2);
+          };
+          const screwdriver = (ctx, x, y, ang, s = 1) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            ctx.fillStyle = "#cfd6ea";
+            ctx.fillRect(-4 * s, -110 * s, 8 * s, 80 * s);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = P.ink;
+            ctx.strokeRect(-4 * s, -110 * s, 8 * s, 80 * s);
+            L.rr(ctx, -12 * s, -36 * s, 24 * s, 56 * s, 9 * s);
+            ctx.fillStyle = P.cyan;
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            ctx.restore();
+          };
+
+          const shotD = (ctx, t) => {
+            const push = L.ep(t, 66.2, HONEY - 0.02, "inOutCubic");
+            const zoom = L.lerp(1.0 + 0.03 * L.barPulse(t, 6), 1.75, push);
+            const headY = STAGE_Y - 4 - 236 * 1.4;
+            L.cam(ctx, { zoom, x: L.lerp(960, FX_D + 50, push), y: L.lerp(540, headY + 10, push) });
+            clubWall(ctx, t, { dim: 0.8 });
+            C.stageFloor(ctx, STAGE_Y);
+            footlights(ctx, t, 1);
+            C.spotlight(ctx, FX_D, STAGE_Y - 4, { w: 480, alpha: 0.3, top: -60, srcX: 760 });
+            C.spotlight(ctx, 1250, STAGE_Y - 4, { w: 640, alpha: 0.2 + 0.1 * L.pulse(t, 5), top: -60, srcX: 1100, color: "#ffd6ea" });
+            toolbox(ctx, t);
+            const boxTop = [TB.x, TB.y - TB.h - 10];
+            // the band
+            {
+              const p = flyTo(t, OUT[0], boxTop, [TB.x + 10, TB.y - TB.h + 4]);
+              if (t >= OUT[0] - 0.36) {
+                if (p.f < 1) {
+                  ctx.save();
+                  ctx.translate(p.x, p.y - 60);
+                  ctx.rotate(p.spin);
+                  C.wrench(ctx, 0, 0, 2.3, 4);
+                  ctx.restore();
+                } else trumpetWrench(ctx, p.x, p.y, t, 2.3);
+              }
+            }
+            {
+              const p = flyTo(t, OUT[1], boxTop, [TB.x + TB.w / 2 + 170, STAGE_Y - 2]);
+              if (t >= OUT[1] - 0.36) {
+                if (p.f < 1) {
+                  ctx.save();
+                  ctx.translate(p.x, p.y - 80);
+                  ctx.rotate(p.spin);
+                  ctx.translate(0, 80);
+                  drumHammer(ctx, 0, 0, OUT[1] - 0.2, 1.4);
+                  ctx.restore();
+                } else drumHammer(ctx, p.x, p.y, t, 1.4);
+              }
+            }
+            {
+              const p = flyTo(t, OUT[2], boxTop, [850, STAGE_Y - 72]);
+              if (t >= OUT[2] - 0.36) {
+                if (p.f < 1) {
+                  ctx.save();
+                  ctx.translate(p.x, p.y);
+                  ctx.rotate(p.spin);
+                  tromboneTape(ctx, 0, 0, OUT[2] - 0.5, 1.5);
+                  ctx.restore();
+                } else tromboneTape(ctx, p.x, p.y, t, 1.5);
+              }
+            }
+            // her, conducting
+            const g = C.groove(t, "swing", 0.5);
+            const conduct = t >= OUT[3];
+            const honey = t >= HONEY;
+            const herPose = {
+              ...g,
+              x: FX_D, y: STAGE_Y - 4, s: 1.4, dy: 0,
+              face: honey ? "wink" : t < LID ? "sing" : t < LID + 0.4 ? "open" : "happy",
+              mouth: honey ? 0.35 : 0.3 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              sparkle: t >= LID && t < LID + 0.4,
+              blush: honey ? 1.5 : 1.1,
+              lArm: 32, lBend: 135, lHold: "mic",
+              rArm: honey ? 110 : conduct ? 118 + 28 * Math.sin(L.bp(t) * Math.PI) : 60 + L.sway(t) * 20,
+              rBend: honey ? 60 : conduct ? 20 + 20 * Math.cos(L.bp(t) * Math.PI) : 30,
+              headTilt: honey ? 0.12 : 0,
+              look: t < OUT[3] ? [1, -0.3] : [0, 0],
+            };
+            fish(ctx, herPose);
+            const J = C.joints(herPose);
+            // the screwdriver leaps into her hand and becomes the baton
+            {
+              const hx = J.rHand.x, hy = J.rHand.y;
+              if (t >= OUT[3] - 0.36) {
+                const p = flyTo(t, OUT[3], boxTop, [hx, hy]);
+                if (p.f < 1) screwdriver(ctx, p.x, p.y, p.spin, 1.1);
+                else {
+                  // on "honey" the baton tips out to the side, so it never stands up beside her cheek in the close-up
+                  const ang = honey ? 0.7 + 0.15 * Math.sin(L.bp(t) * Math.PI) : 0.5 + 0.35 * Math.sin(L.bp(t) * Math.PI);
+                  screwdriver(ctx, hx, hy + 6, ang, 1.1);
+                  if (!honey) {
+                    const tx = hx + Math.sin(ang) * 120, ty = hy - Math.cos(ang) * 120;
+                    L.sparkle(ctx, tx, ty, 16 * (0.4 + 0.6 * L.pulse(t, 5)), "#fff");
+                  }
+                }
+              }
+            }
+            // landing puffs for each band member
+            for (let i = 0; i < 3; i++) {
+              const k = L.seg(t, OUT[i], OUT[i] + 0.35);
+              if (k <= 0 || k >= 1) continue;
+              const pos = [[TB.x + 10, TB.y - TB.h], [TB.x + TB.w / 2 + 170, STAGE_Y], [850, STAGE_Y]][i];
+              ctx.save();
+              ctx.globalAlpha = 1 - k;
+              ctx.strokeStyle = "#fff";
+              ctx.lineWidth = 5;
+              L.ellipse(ctx, pos[0], pos[1], 50 + 120 * k, 12 + 20 * k);
+              ctx.stroke();
+              ctx.restore();
+            }
+            // wink → heart
+            if (honey) {
+              const hk = L.seg(t, HONEY, HONEY + 0.3);
+              const beatP = L.pulse(t, 6);
+              const s = 170 * L.ease.outBack(hk) * (1 + 0.12 * beatP);
+              // the v2 head + hair are much wider than v1's: park the heart up-right, clear of her hair, ruffle and
+              // fin (head frame, so it rides the honey head-tilt), and keep the little hearts and the wink star off her face
+              const hc = headPt(J, herPose.s, 205, 300);
+              const hx = hc.x, hy = hc.y;
+              L.glow(ctx, hx, hy, 260, P.pink, 0.4);
+              for (let i = 0; i < 7; i++) {
+                const age = t - HONEY - i * 0.07;
+                if (age < 0) continue;
+                const px = hx + (L.hash(i * 5) - 0.3) * 220 + age * 60, py = hy + 40 - age * 240;
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, 1 - age / 0.9);
+                L.heart(ctx, px, py, 40);
+                ctx.fillStyle = i % 2 ? P.pink : "#ffb3d6";
+                ctx.fill();
+                ctx.restore();
+              }
+              L.heart(ctx, hx, hy, s);
+              ctx.fillStyle = P.pink;
+              ctx.fill();
+              ctx.lineWidth = 7;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              ctx.fillStyle = "rgba(255,255,255,0.7)";
+              L.ellipse(ctx, hx - s * 0.25, hy - s * 0.2, s * 0.1, s * 0.06, -0.6);
+              ctx.fill();
+              // wink star just outside the closed (screen-right) eye
+              const ws = headPt(J, herPose.s, 86, 206);
+              L.sparkle(ctx, ws.x, ws.y, 22 * L.pulse(t, 4), "#fff");
+            }
+            if (push < 0.6) audience(ctx, t, 1);
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 5e — Code and rhythm never cost no money : ¥0.00, zeros rain as coins
+           * ===================================================================== */
+          const E0 = D1, E1 = T1;
+          const TAG_IN = 67.733, STAMP = 68.638, RAIN0 = 68.1;
+          const FLOOR_E = 870;
+          const CODE = [
+            "const rhythm = swing(4 / 4);   ",
+            "let cost = 0.00; // free!   ",
+            "for (const beat of song) groove(beat);   ",
+            'tools.call("sing", { honey: true });   ',
+            'return "let me go~";   ',
+          ];
+          const coin = (ctx, x, y, r, spin) => {
+            const sx = Math.max(0.12, Math.abs(Math.cos(spin)));
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(sx, 1);
+            L.circle(ctx, 0, 0, r);
+            ctx.fillStyle = Math.cos(spin) > 0 ? P.json : "#f0b840";
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.circle(ctx, 0, 0, r * 0.72);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "#c8902a";
+            ctx.stroke();
+            if (sx > 0.4) {
+              // the embossed zero, drawn as a ring (cheaper than text, same read)
+              L.ellipse(ctx, 0, 0, r * 0.26, r * 0.4);
+              ctx.lineWidth = r * 0.17;
+              ctx.strokeStyle = "#b07010";
+              ctx.stroke();
+            }
+            ctx.restore();
+          };
+          // analytic fall + one bounce
+          const fall = (tau, y0, vy0, yf, g = 2400) => {
+            // time to reach yf from y0 with initial vy0
+            const tf = (-vy0 + Math.sqrt(vy0 * vy0 + 2 * g * (yf - y0))) / g;
+            if (tau < tf) return { y: y0 + vy0 * tau + 0.5 * g * tau * tau, rest: false };
+            const vb = (vy0 + g * tf) * 0.32;
+            const t2 = tau - tf;
+            if (t2 < (2 * vb) / g) return { y: yf - (vb * t2 - 0.5 * g * t2 * t2), rest: false };
+            return { y: yf, rest: true };
+          };
+          const codeStaff = (ctx, t) => {
+            const scroll = (t - E0) * 170;
+            ctx.save();
+            ctx.font = `700 30px "${L.FONT.mono}", monospace`;
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "left";
+            for (let i = 0; i < 5; i++) {
+              const y = 130 + i * 58;
+              ctx.strokeStyle = "rgba(190,230,255,0.35)";
+              ctx.lineWidth = 3;
+              ctx.beginPath();
+              ctx.moveTo(-80, y + 22);
+              ctx.lineTo(2000, y + 22);
+              ctx.stroke();
+              const w = ctx.measureText(CODE[i]).width;
+              let x = -((scroll * (1 + i * 0.08) + i * 190) % w);
+              ctx.fillStyle = L.rgba([P.cyan, P.mint, P.cyan, P.pink, P.json][i], 0.55);
+              while (x < 1960) {
+                ctx.fillText(CODE[i], x, y);
+                x += w;
+              }
+            }
+            ctx.restore();
+            // notes riding the staff, hopping on the beat
+            for (let j = 0; j < 16; j++) {
+              const x = ((j * 170 - scroll * 1.1) % 2720 + 2720) % 2720 - 200;
+              if (x < -80 || x > 2000) continue;
+              const p = Math.floor(L.hash(j * 3.3) * 9);
+              const y = 152 + p * 29 - 14 * L.pulse(t, 6) * ((j + L.beatIndex(t)) % 2);
+              L.note(ctx, x, y, 44, NOTE_COLS[j % 4], j % 3 === 0, 0);
+            }
+          };
+          const priceTag = (ctx, t) => {
+            const dropK = L.seg(t, TAG_IN - 0.25, TAG_IN);
+            if (dropK <= 0) return;
+            const tau = Math.max(0, t - TAG_IN);
+            const swing = 0.22 * Math.exp(-tau * 2.2) * Math.sin(tau * 7.5) + 0.03 * Math.sin(t * 2);
+            const cy = L.lerp(-420, 560, L.ease.outBack(dropK));
+            const ax = 760, ay = -20;
+            ctx.save();
+            ctx.translate(ax, ay);
+            ctx.rotate(swing);
+            const ty = cy - ay;
+            // string
+            ctx.strokeStyle = "#e8e0c8";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(0, ty - 205);
+            ctx.stroke();
+            ctx.translate(0, ty);
+            ctx.rotate(-0.06);
+            // tag body (pointed top, rounded bottom)
+            ctx.beginPath();
+            ctx.moveTo(-60, -230);
+            ctx.lineTo(60, -230);
+            ctx.lineTo(260, -120);
+            ctx.lineTo(260, 190);
+            ctx.quadraticCurveTo(260, 220, 230, 220);
+            ctx.lineTo(-230, 220);
+            ctx.quadraticCurveTo(-260, 220, -260, 190);
+            ctx.lineTo(-260, -120);
+            ctx.closePath();
+            ctx.fillStyle = "#f6e7c4";
+            ctx.fill();
+            ctx.lineWidth = 7;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            ctx.strokeStyle = "rgba(160,120,60,0.35)";
+            ctx.lineWidth = 3;
+            ctx.setLineDash([10, 8]);
+            ctx.strokeRect(-230, -100, 460, 290);
+            ctx.setLineDash([]);
+            L.circle(ctx, 0, -195, 16);
+            ctx.fillStyle = "#1a1438";
+            ctx.fill();
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+            L.text(ctx, "PRICE", 0, -128, { size: 40, font: L.FONT.tall, color: "#8a6a3a", weight: 400, tracking: 6 });
+            L.text(ctx, "¥0.00", 0, 10, { size: 150, font: L.FONT.block, color: P.ink, weight: 400 });
+            // FREE stamp
+            const sk = L.seg(t, STAMP - 0.1, STAMP);
+            if (sk > 0) {
+              const sc = L.lerp(2.3, 1, L.ease.inCubic(sk)) + 0.08 * Math.exp(-Math.max(0, t - STAMP) * 8);
+              ctx.save();
+              ctx.translate(10, 138);
+              ctx.rotate(-0.12);
+              ctx.scale(sc, sc);
+              ctx.globalAlpha = sk;
+              L.rr(ctx, -250, -58, 500, 116, 18);
+              ctx.fillStyle = "rgba(255,90,110,0.12)";
+              ctx.fill();
+              ctx.lineWidth = 9;
+              ctx.strokeStyle = P.red;
+              ctx.stroke();
+              L.text(ctx, "tokens: FREE", 0, 4, { size: 62, font: L.FONT.block, color: P.red, weight: 400 });
+              ctx.restore();
+            }
+            ctx.restore();
+          };
+
+          const shotE = (ctx, t) => {
+            const shake = t >= STAMP ? 12 * Math.exp(-(t - STAMP) * 7) : 0;
+            const zoom = 1.0 + 0.035 * L.barPulse(t, 6) + 0.03 * L.ep(t, E0, E1, "inOutSine");
+            L.cam(ctx, { zoom, x: 960, y: 540, shake, t });
+            clubWall(ctx, t, { dim: 0.5 });
+            L.glow(ctx, 960, 420, 640, P.json, 0.12 + 0.1 * L.pulse(t, 5));
+            codeStaff(ctx, t);
+            C.stageFloor(ctx, FLOOR_E);
+            // her, having the time of her life
+            L.glow(ctx, 1440, 600, 440, "#ffe6c0", 0.28);
+            const g = C.groove(t, "hop", 0.8);
+            const stamped = t >= STAMP;
+            // zeros raining as coins + the jackpot spray out of the tag on the stamp. The v2 hair + fins are much
+            // wider than v1's, so every coin that is inside her column (x 1200..1730, wider than her fins and tail)
+            // passes BEHIND her and no coin slides across her face; the rest fly in front. She has no silhouette at
+            // the column edges, so a coin changing layer there never pops.
+            const HER_X = 1440;
+            const inCol = (x) => x > HER_X - 240 && x < HER_X + 290;
+            const coins = (behind) => {
+              for (let i = 0; i < 70; i++) {
+                const ts = RAIN0 + i * 0.034;
+                const tau = t - ts;
+                if (tau < 0) continue;
+                const yf = FLOOR_E + 10 + L.hash(i * 4.1) * 150;
+                const f = fall(tau, -80, 200, yf);
+                const x = 60 + L.hash(i * 1.37) * 1800 + (f.rest ? 0 : Math.sin(tau * 3 + i) * 20);
+                if (inCol(x) !== behind) continue;
+                const spin = f.rest ? 0 : tau * (7 + 5 * L.hash(i)) + i;
+                coin(ctx, x, f.y, 26 + 12 * L.hash(i * 9), spin);
+              }
+              if (t < STAMP) return;
+              const tau = t - STAMP;
+              for (let i = 0; i < 26; i++) {
+                const vx = (L.hash(i * 2.9) - 0.5) * 1500, vy = -1100 - L.hash(i * 5.3) * 700;
+                const x = 780 + vx * tau;
+                if (x < -60 || x > 1980 || inCol(x) !== behind) continue;
+                const yf = FLOOR_E + 20 + L.hash(i * 6.1) * 130;
+                const f = fall(tau, 620, vy, yf);
+                coin(ctx, x, f.y, 30, f.rest ? 0 : tau * 9 + i);
+              }
+            };
+            coins(true);
+            fish(ctx, {
+              ...g,
+              x: HER_X, y: FLOOR_E - 4, s: 1.42,
+              face: stamped && t < STAMP + 0.45 ? "wink" : "happy",
+              mouth: 0.4 + 0.45 * Math.abs(Math.sin(L.bp(t) * Math.PI)),
+              sparkle: true,
+              blush: 1.3,
+              lArm: stamped ? 150 + L.sway(t) * 12 : 32, lBend: stamped ? 10 : 135, lHold: stamped ? null : "mic",
+              rArm: 155 - L.sway(t) * 12, rBend: 10,
+            });
+            coins(false);
+            // the stamp's shock ring
+            if (t >= STAMP) {
+              const k = L.seg(t - STAMP, 0, 0.45);
+              if (k < 1) {
+                ctx.save();
+                ctx.globalAlpha = 1 - k;
+                ctx.strokeStyle = P.json;
+                ctx.lineWidth = 10 * (1 - k) + 2;
+                L.circle(ctx, 780, 680, 80 + 420 * k);
+                ctx.stroke();
+                ctx.restore();
+              }
+            }
+            priceTag(ctx, t);
+            L.camEnd(ctx);
+          };
+
+          L.mountChapter({
+            id: ID,
+            t0: T0,
+            dur: T1 - T0,
+            shots: [
+              { a: T0, b: A1, draw: shotA },
+              { a: A1, b: B1, draw: shotB },
+              { a: B1, b: C1, draw: shotC },
+              { a: C1, b: D1, draw: shotD },
+              { a: D1, b: T1, draw: shotE },
+            ],
+            post: (ctx) => L.vignette(ctx, 0.5),
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>
