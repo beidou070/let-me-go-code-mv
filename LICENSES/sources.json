@@ -1,0 +1,46 @@
+[
+  {
+    "name": "ArchivoBlack",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/archivoblack/OFL.txt",
+    "file": "LICENSES/ArchivoBlack.txt",
+    "sha256": "3173acd82f8c6159b5b1037b539fcbd4edff68e65c2ea8b9412b5a5ca97b08ff"
+  },
+  {
+    "name": "Fredoka",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/fredoka/OFL.txt",
+    "file": "LICENSES/Fredoka.txt",
+    "sha256": "5c9e7eee5c6b25f4b05b8d53b2e470ea4962f9ced742d044a98f7d95d1375bab"
+  },
+  {
+    "name": "JetBrainsMono",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/jetbrainsmono/OFL.txt",
+    "file": "LICENSES/JetBrainsMono.txt",
+    "sha256": "b2fe5e8987594e9ffd1d2ca52a2f5d73eb8335243893c5d6254b5ad69269591d"
+  },
+  {
+    "name": "LeagueGothic",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/leaguegothic/OFL.txt",
+    "file": "LICENSES/LeagueGothic.txt",
+    "sha256": "44778c339892f79188c60b7471485dd5af92c59351c7f9629a00fc625c6cae5d"
+  },
+  {
+    "name": "NotoSansSC",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosanssc/OFL.txt",
+    "file": "LICENSES/NotoSansSC.txt",
+    "sha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9"
+  },
+  {
+    "name": "Yellowtail",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/apache/yellowtail/LICENSE.txt",
+    "file": "LICENSES/Yellowtail.txt",
+    "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  {
+    "name": "GSAP",
+    "errors": [
+      "HTTP Error 404: Not Found",
+      "HTTP Error 404: Not Found",
+      "HTTP Error 404: Not Found"
+    ]
+  }
+]
