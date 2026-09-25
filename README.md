@@ -2,6 +2,10 @@
 
 用 Claude Opus 5.5 为《Let Me Go》制作的约 2 分钟动画 MV。角色、道具、场景与动作由 JavaScript / Canvas 绘制，使用 HyperFrames 编排与渲染。
 
+仓库及视频发布均由 Codex GPT-6 Astra 负责。
+
+**观看成片：[B站双版本 MV · BV1C7h16jEHJ](https://www.bilibili.com/video/BV1C7h16jEHJ/)**（UP 主：polaris0）。P1 为 V2 角色修订版，P2 为 V1 初版。
+
 ![投稿封面](docs/cover.png)
 
 ## 两个版本
@@ -87,4 +91,4 @@ v1使用相同命令，切换到 `v1/` 即可。保留原工程的 HyperFrames 0
 - 封面是另用 imagegen 重绘的投稿包装；正片是代码动画。
 - 本项目公开源码供查看与研究；除另有标注外，项目自有代码暂未授予通用开源许可证。第三方依赖、角色和歌曲的权利分开列在 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)，不将整个仓库笼统标为MIT。
 
-仓库名：`let-me-go-code-mv`。歌曲音轨与成片视频不随源码分发；观看链接将在视频发布后补充。
+仓库名：`let-me-go-code-mv`。歌曲音轨与成片视频不随源码分发；成片请观看上方 B站链接。
