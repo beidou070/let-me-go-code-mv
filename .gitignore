@@ -1,0 +1,27 @@
+# Local media supplied by each user
+**/assets/song.*
+**/assets/lyrics.lrc
+*.mp4
+*.flac
+*.wav
+*.mp3
+
+# Render outputs and application caches
+node_modules/
+**/.hyperframes/
+**/.thumbnails/
+**/.shots/
+**/.media/
+**/.waveform-cache/
+**/renders/
+**/snapshots/
+__pycache__/
+*.pyc
+.DS_Store
+Thumbs.db
+.env
+.env.*
+
+# Reference artwork is documented by URL, not redistributed
+**/ref/
+**/cast_candidates/
