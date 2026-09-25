@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; }
+        #ch2-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-tecm" id="root" data-composition-id="ch2" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-tbpg" id="ch2-canvas" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+        (function () {
+          /* Chapter 2 — hook #2 (11.559 – 22.616)
+           * 2a 11.56–13.86 "let me go～"            the chat window splits into stage curtains; spotlight; fishling audience pops centre-out
+           * 2b 13.86–18.04 "I'm making the calls"  4-panel comic, one panel slams per beat (4 phones, 4 moods); last bar all ring together
+           * 2c 18.04–20.74 "let me write the JSON" she hops up a floating staircase of JSON tokens, each lights gold on landing
+           * 2d 20.74–22.62 "I'll call the tool"    she hurls a glowing call() arrow out of the porthole; it becomes a shooting star; push into the city
+           */
+          const L = LIB, C = CAST, P = L.P;
+          const ID = "ch2", T0 = 11.559, T1 = 22.616;
+          const D2R = Math.PI / 180;
+          const lerp = L.lerp;
+
+          /* ---------- rig helpers: replicate CAST.fish arm math so props attach to her hands ---------- */
+          const armLocal = (p, side) => {
+            const up = (side < 0 ? p.lArm : p.rArm) || 0, bend = (side < 0 ? p.lBend : p.rBend) || 0;
+            const d1 = [side * Math.sin(up * D2R), Math.cos(up * D2R)];
+            const d2 = [side * Math.sin((up - bend) * D2R), Math.cos((up - bend) * D2R)];
+            return { x: side * 27 + d1[0] * 36 + d2[0] * 33, y: -157 + d1[1] * 36 + d2[1] * 33, ang: Math.atan2(d2[1], d2[0]) };
+          };
+          const toFishSpace = (ctx, p) => {
+            const s = p.s || 1, sq = p.sq || 1;
+            ctx.translate(p.x || 0, (p.y || 0) + (p.dy || 0) * s);
+            if (p.rot) ctx.rotate(p.rot);
+            ctx.scale(s * sq * (p.flip ? -1 : 1), s / sq);
+          };
+          const handPos = (p, side) => {
+            const a = armLocal(p, side), s = p.s || 1, sq = p.sq || 1, r = p.rot || 0;
+            const x = a.x * s * sq * (p.flip ? -1 : 1), y = (a.y * s) / sq;
+            return { x: (p.x || 0) + x * Math.cos(r) - y * Math.sin(r), y: (p.y || 0) + (p.dy || 0) * s + x * Math.sin(r) + y * Math.cos(r) };
+          };
+          // a phone handset in any colour, drawn exactly where the rig would draw rHold:'phone'
+          const handset = (ctx, p, side, col) => {
+            const a = armLocal(p, side), s = p.s || 1;
+            const lw = ((2.6 + 1.4 * s) / s) * 0.8;
+            ctx.save();
+            toFishSpace(ctx, p);
+            ctx.translate(a.x, a.y);
+            ctx.rotate((a.ang + Math.PI / 2) * 0.3);
+            ctx.beginPath();
+            ctx.moveTo(-8, -34);
+            ctx.quadraticCurveTo(-14, 0, -8, 34);
+            ctx.lineTo(4, 34);
+            ctx.quadraticCurveTo(-2, 0, 4, -34);
+            ctx.closePath();
+            C.ink(ctx, col, lw);
+            for (const yy of [-34, 34]) {
+              L.ellipse(ctx, -4, yy, 12, 8);
+              C.ink(ctx, col, lw);
+            }
+            ctx.restore();
+          };
+          // handset pressed ear-to-mouth (local fish space), for the phone-at-the-ear pose (rArm 20, rBend 150)
+          const EAR = { x: 42, y: -186, rot: 0.6, bottom: [21, -158] };
+          const handsetAt = (ctx, p, lx, ly, rot, col) => {
+            const s = p.s || 1;
+            const lw = ((2.6 + 1.4 * s) / s) * 0.8;
+            ctx.save();
+            toFishSpace(ctx, p);
+            ctx.translate(lx, ly);
+            ctx.rotate(rot);
+            ctx.scale(1.3, 1.08);
+            ctx.beginPath();
+            ctx.moveTo(-8, -34);
+            ctx.quadraticCurveTo(-14, 0, -8, 34);
+            ctx.lineTo(4, 34);
+            ctx.quadraticCurveTo(-2, 0, 4, -34);
+            ctx.closePath();
+            C.ink(ctx, col, lw);
+            for (const yy of [-34, 34]) {
+              L.ellipse(ctx, -4, yy, 12, 8);
+              C.ink(ctx, col, lw);
+            }
+            ctx.restore();
+          };
+          const localToWorld = (p, lx, ly) => {
+            const s = p.s || 1, sq = p.sq || 1, r = p.rot || 0;
+            const x = lx * s * sq * (p.flip ? -1 : 1), y = (ly * s) / sq;
+            return { x: (p.x || 0) + x * Math.cos(r) - y * Math.sin(r), y: (p.y || 0) + (p.dy || 0) * s + x * Math.sin(r) + y * Math.cos(r) };
+          };
+          const cord = (ctx, ax, ay, bx, by, col, sag = 90, w = 5) => {
+            ctx.save();
+            ctx.strokeStyle = col;
+            ctx.lineWidth = w;
+            ctx.lineCap = "round";
+            ctx.beginPath();
+            for (let i = 0; i <= 56; i++) {
+              const u = i / 56;
+              const px = lerp(ax, bx, u) + Math.cos(u * 38) * 8;
+              const py = lerp(ay, by, u) + Math.sin(u * Math.PI) * sag + Math.sin(u * 38) * 8;
+              i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+            }
+            ctx.stroke();
+            ctx.restore();
+          };
+          const talk = (t, k = 1) => 0.2 + 0.55 * Math.abs(Math.sin(L.bp(t) * Math.PI * k));
+
+          const bgNavy = (ctx, t, gx = 960, gy = 540, col = P.cyan) => {
+            const g = ctx.createRadialGradient(gx, gy, 50, gx, gy, 1200);
+            g.addColorStop(0, "#1c2b72");
+            g.addColorStop(0.5, P.night1);
+            g.addColorStop(1, P.night0);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.glow(ctx, gx, gy, 700, col, 0.12 + 0.06 * L.pulse(t, 4));
+          };
+
+          /* =====================================================================
+           * 2a — chat window → curtains → mini stage
+           * ===================================================================== */
+          const WX = 360, WY = 60, WW = 1200, WH = 740;
+          const STAGE_Y = WY + WH - 64; // centre of the input box = her feet
+          const VELVET = "#6e1f63";
+
+          const drawCurtain = (ctx, t, k, side) => {
+            const m = (x) => (side < 0 ? x : L.W - x);
+            const xL = lerp(WX, -80, k), yT = lerp(WY, -20, k), yB = lerp(WY + WH, 1100, k);
+            const xTop = lerp(960, 430, k), tieX = lerp(960, 205, k), tieY = lerp(430, 600, k), xBot = lerp(960, 330, k);
+            const sway = Math.sin(t * 2.2 + side) * 10 * k;
+            const path = () => {
+              ctx.beginPath();
+              ctx.moveTo(m(xL), yT);
+              ctx.lineTo(m(xTop), yT);
+              ctx.quadraticCurveTo(m(lerp(xTop, tieX, 0.5) + 60 * k + sway), (yT + tieY) / 2, m(tieX + sway), tieY);
+              ctx.quadraticCurveTo(m(tieX + 20 * k), lerp(tieY, yB, 0.5), m(xBot + sway * 0.6), yB);
+              ctx.lineTo(m(xL), yB);
+              ctx.closePath();
+            };
+            path();
+            const kc = Math.sqrt(k);
+            const g = ctx.createLinearGradient(m(xL), 0, m(xTop), 0);
+            g.addColorStop(0, L.mixColor("#101a46", "#3a0d36", kc));
+            g.addColorStop(0.55, L.mixColor("#101a46", VELVET, kc));
+            g.addColorStop(1, L.mixColor("#101a46", "#9a2f82", kc));
+            ctx.fillStyle = g;
+            ctx.fill();
+            if (k < 0.6) {
+              ctx.strokeStyle = L.rgba("#3a4fa0", 1 - k / 0.6);
+              ctx.lineWidth = 5;
+              ctx.stroke();
+            }
+            if (k > 0.05) {
+              ctx.save();
+              for (let j = 1; j < 7; j++) {
+                const fx = lerp(xL, xTop, j / 7);
+                ctx.beginPath();
+                ctx.moveTo(m(fx), yT);
+                ctx.quadraticCurveTo(m(lerp(fx, tieX, 0.75) + sway), tieY - 40, m(lerp(fx, tieX, 0.9) + sway), tieY);
+                ctx.quadraticCurveTo(m(lerp(fx, xBot, 0.85)), lerp(tieY, yB, 0.6), m(lerp(xL, xBot, j / 7)), yB);
+                ctx.strokeStyle = L.rgba("#1a0420", 0.4 * k);
+                ctx.lineWidth = 12;
+                ctx.stroke();
+                ctx.strokeStyle = L.rgba("#ff9ad6", 0.16 * k);
+                ctx.lineWidth = 4;
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+            // gold tie-back rope
+            if (k > 0.7) {
+              const a = L.seg(k, 0.7, 1);
+              ctx.save();
+              ctx.globalAlpha *= a;
+              ctx.strokeStyle = P.gold;
+              ctx.lineWidth = 10;
+              ctx.lineCap = "round";
+              ctx.beginPath();
+              ctx.moveTo(m(xL + 60), tieY - 10);
+              ctx.quadraticCurveTo(m((xL + tieX) / 2 + 40), tieY + 30, m(tieX + sway + 12), tieY - 6);
+              ctx.stroke();
+              L.circle(ctx, m(tieX + sway + 12), tieY - 6, 14);
+              ctx.fillStyle = P.amber;
+              ctx.fill();
+              ctx.restore();
+            }
+          };
+
+          const drawValance = (ctx, t, k) => {
+            const x = lerp(WX, -20, k), y = lerp(WY, -20, k), w = lerp(WW, 1960, k), h = lerp(64, 130, k);
+            ctx.save();
+            if (k < 0.02) {
+              L.rr(ctx, WX, WY, WW, WH, 28);
+              ctx.clip();
+            }
+            ctx.fillStyle = L.mixColor("#1a2766", "#4a1646", k);
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + w, y);
+            ctx.lineTo(x + w, y + h);
+            const n = 14;
+            for (let i = n; i > 0; i--) ctx.quadraticCurveTo(x + (w * (i - 0.5)) / n, y + h + 34 * k, x + (w * (i - 1)) / n, y + h);
+            ctx.closePath();
+            ctx.fill();
+            if (k > 0.05) {
+              ctx.strokeStyle = L.rgba(P.gold, k);
+              ctx.lineWidth = 6;
+              ctx.stroke();
+              // chasing marquee bulbs along the valance
+              const bi = L.beatIndex(t);
+              for (let i = 0; i < 24; i++) {
+                const bx = x + 40 + i * ((w - 80) / 23), by = y + h - 22;
+                const on = (i + bi) % 3 === 0;
+                ctx.fillStyle = L.rgba(on ? "#fff1b8" : "#8a6a3a", k);
+                L.circle(ctx, bx, by, on ? 7 : 5);
+                ctx.fill();
+                if (on) L.glow(ctx, bx, by, 26, P.amber, 0.5 * k);
+              }
+            }
+            ctx.restore();
+            // title morph: "Whale Chat" → "WHALE CHAT · LIVE"
+            const cx = x + w / 2, cy = y + lerp(32, 66, k);
+            if (k < 1) {
+              ctx.save();
+              ctx.globalAlpha *= 1 - k;
+              ["#ff6f91", "#ffc85a", "#6fffc8"].forEach((c, i) => {
+                ctx.fillStyle = c;
+                L.circle(ctx, x + 36 + i * 30, y + 32, 9);
+                ctx.fill();
+              });
+              C.whaleIcon(ctx, cx - 80, cy + 1, 0.42, P.cyan, false);
+              L.text(ctx, "Whale Chat", cx + 10, cy, { size: 26, color: "#cfe0ff" });
+              ctx.restore();
+            }
+            if (k > 0) {
+              const s = L.ease.outBack(L.seg(k, 0.4, 1));
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.scale(s, s);
+              L.text(ctx, "WHALE CHAT · LIVE", 0, 0, { size: 50, font: L.FONT.block, weight: 400, color: P.json, stroke: P.ink, strokeW: 10, tracking: 4 });
+              ctx.restore();
+            }
+          };
+
+          const msgBubble = (ctx, text, isUser, x, y, fs, p = 1, t = 0) => {
+            ctx.font = `600 ${fs}px "${L.FONT.round}", "${L.FONT.zh}", sans-serif`;
+            const thinking = p <= 0;
+            const bw = (thinking ? fs * 1.4 : Math.max(ctx.measureText(text).width, fs * 1.4)) + 56, bh = fs + 40;
+            const bx = isUser ? x - bw : x;
+            L.rr(ctx, bx, y, bw, bh, 24);
+            ctx.fillStyle = isUser ? "#2c4bb8" : "#f3f6ff";
+            ctx.fill();
+            if (!isUser) {
+              ctx.fillStyle = "#1f2b5e";
+              L.circle(ctx, bx - 46, y + bh / 2, 32);
+              ctx.fill();
+              C.whaleIcon(ctx, bx - 46, y + bh / 2 + 4, 0.62, P.cyan, false);
+            }
+            if (thinking) {
+              for (let k = 0; k < 3; k++) {
+                ctx.fillStyle = L.rgba("#1f2b5e", 0.35 + 0.65 * Math.max(0, Math.sin(t * 7 - k * 0.9)));
+                L.circle(ctx, bx + 36 + k * 26, y + bh / 2, 8);
+                ctx.fill();
+              }
+              return bh;
+            }
+            const shown = text.slice(0, Math.round(text.length * L.clamp(p)));
+            L.text(ctx, shown, bx + 28, y + bh / 2 + 1, { size: fs, color: isUser ? "#fff" : "#1a2255", align: "left" });
+            return bh;
+          };
+
+          const FISHLINGS = (() => {
+            const out = [];
+            const cols = ["#6fb8ff", P.pink, P.amber, P.mint, "#b69cff"];
+            [-3, -2, -1, 1, 2, 3].forEach((k, j) => out.push({ x: 960 + k * 260 - Math.sign(k) * 70, y: 852, s: 1.2, c: cols[(j + 1) % 5] }));
+            [-3.5, -2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5].forEach((k, j) => out.push({ x: 960 + k * 235, y: 902, s: 1.45, c: cols[j % 5] }));
+            out.forEach((f) => (f.tp = 13.05 + (Math.abs(f.x - 960) / 900) * 0.62));
+            return out;
+          })();
+
+          const shotA = (ctx, t) => {
+            const k = L.ep(t, 12.3, 12.8, "inOutCubic");
+            const lit = L.seg(t, 12.74, 12.817);
+            const slam = t >= 12.817 ? Math.exp(-6 * (t - 12.817)) : 0;
+            if (k < 1) bgNavy(ctx, t, 960, 500);
+            const zoom = 1.0 + 0.025 * L.ep(t, 11.56, 13.86, "inOutSine") + 0.035 * slam;
+            L.cam(ctx, { zoom, x: 960, y: 540, shake: 7 * slam, t });
+            // ---- stage world revealed behind the window ----
+            if (k > 0) {
+              ctx.save();
+              ctx.globalAlpha *= k;
+              // back drape
+              const g = ctx.createLinearGradient(0, 0, 0, 800);
+              g.addColorStop(0, "#1b1650");
+              g.addColorStop(1, "#2a1a5c");
+              ctx.fillStyle = g;
+              ctx.fillRect(-100, -100, 2120, 900);
+              ctx.strokeStyle = "rgba(8,6,30,0.35)";
+              ctx.lineWidth = 8;
+              for (let i = 0; i < 17; i++) {
+                const fx = -40 + i * 120;
+                ctx.beginPath();
+                ctx.moveTo(fx, -40);
+                ctx.quadraticCurveTo(fx + Math.sin(t * 1.3 + i) * 12, 400, fx, 820);
+                ctx.stroke();
+              }
+              // sweeping coloured beams
+              for (const [sx, col, ph] of [[300, P.pink, 0], [1620, P.cyan, Math.PI]]) {
+                const a = 0.35 * Math.sin(L.bp(t) * Math.PI * 0.5 + ph);
+                ctx.save();
+                ctx.translate(sx, -40);
+                ctx.rotate(a);
+                const bg = ctx.createLinearGradient(0, 0, 0, 900);
+                bg.addColorStop(0, L.rgba(col, 0.35));
+                bg.addColorStop(1, L.rgba(col, 0));
+                ctx.fillStyle = bg;
+                ctx.beginPath();
+                ctx.moveTo(-20, 0);
+                ctx.lineTo(20, 0);
+                ctx.lineTo(170, 900);
+                ctx.lineTo(-170, 900);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+              }
+              // floor in front of the stage
+              const fg = ctx.createLinearGradient(0, 780, 0, 1100);
+              fg.addColorStop(0, "#1a1240");
+              fg.addColorStop(1, "#08061c");
+              ctx.fillStyle = fg;
+              ctx.fillRect(-100, 780, 2120, 400);
+              ctx.restore();
+            }
+            // ---- the chat window (k=0) morphing into curtains ----
+            const glow = 0.6 + 0.4 * L.pulse(t, 4);
+            if (k < 1) L.glow(ctx, 960, 430, 900, P.cyan, 0.18 * glow * (1 - k));
+            ctx.save();
+            if (k < 0.4) {
+              L.rr(ctx, lerp(WX, -200, k), lerp(WY, -200, k), lerp(WW, 2320, k), lerp(WH, 1500, k), lerp(28, 0, k));
+              ctx.clip();
+            }
+            // the two halves of the window body are the curtains
+            if (k < 0.02) {
+              L.rr(ctx, WX, WY, WW, WH, 28);
+              ctx.fillStyle = "#101a46";
+              ctx.fill();
+            } else {
+              drawCurtain(ctx, t, k, -1);
+              drawCurtain(ctx, t, k, 1);
+            }
+            ctx.restore();
+            if (k < 0.02) {
+              L.rr(ctx, WX, WY, WW, WH, 28);
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = "#3a4fa0";
+              ctx.stroke();
+            }
+            // ---- stage platform grows out of the input box ----
+            const ix = WX + 40, iy = WY + WH - 96, iw = WW - 80;
+            if (k < 1) {
+              ctx.save();
+              ctx.globalAlpha *= 1 - L.seg(k, 0, 0.6);
+              L.rr(ctx, ix, iy, iw, 64, 32);
+              ctx.fillStyle = "#0b1233";
+              ctx.fill();
+              ctx.lineWidth = 3;
+              ctx.strokeStyle = L.rgba(P.cyan, 0.7);
+              ctx.stroke();
+              ctx.fillStyle = P.bow;
+              L.circle(ctx, ix + iw - 32, iy + 32, 22);
+              ctx.fill();
+              ctx.restore();
+            }
+            if (k > 0) {
+              const sk = L.ease.outBack(L.seg(k, 0.2, 1));
+              ctx.save();
+              ctx.translate(960, STAGE_Y);
+              ctx.scale(lerp(0.9, 1, sk), sk);
+              // front face
+              L.rr(ctx, -600, 0, 1200, 84, 20);
+              const sg = ctx.createLinearGradient(0, 0, 0, 84);
+              sg.addColorStop(0, "#3a1f66");
+              sg.addColorStop(1, "#160c38");
+              ctx.fillStyle = sg;
+              ctx.fill();
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = P.ink;
+              ctx.stroke();
+              // top
+              L.ellipse(ctx, 0, 0, 600, 56);
+              ctx.fillStyle = "#4a3486";
+              ctx.fill();
+              ctx.lineWidth = 7;
+              ctx.strokeStyle = P.gold;
+              ctx.stroke();
+              // chasing lip bulbs
+              const bi = L.beatIndex(t);
+              for (let i = 0; i < 19; i++) {
+                const bx = -540 + i * 60, on = (i + bi) % 2 === 0;
+                ctx.fillStyle = on ? "#fff3c4" : "#7a5a3a";
+                L.circle(ctx, bx, 50, on ? 8 : 6);
+                ctx.fill();
+                if (on) L.glow(ctx, bx, 50, 30, P.amber, 0.45);
+              }
+              ctx.restore();
+            }
+            // ---- spotlight slam on the downbeat ----
+            if (lit > 0) {
+              C.spotlight(ctx, 960, STAGE_Y + 4, { w: 540, alpha: 0.42 * lit + 0.25 * slam, top: -60, color: "#fff4d0" });
+              L.glow(ctx, 960, STAGE_Y - 200, 420, "#fff4d0", 0.24 * lit + 0.3 * slam);
+            }
+            if (slam > 0.02) L.burst(ctx, 960, 520, { n: 30, rot: t * 0.3, alpha: 0.25 * slam, color: "#fff4d0", r0: 200 });
+            // ---- messages (fall away when the window opens) ----
+            const fall = L.seg(t, 12.3, 12.95);
+            if (fall < 1) {
+              const drop = (x0, y0, dir, draw) => {
+                ctx.save();
+                ctx.globalAlpha *= 1 - fall;
+                ctx.translate(x0, y0 + 900 * fall * fall);
+                ctx.rotate(dir * fall * 0.7);
+                draw();
+                ctx.restore();
+              };
+              drop(WX + WW - 40, WY + 104, 1, () => msgBubble(ctx, "工具呢？", true, 0, 0, 38));
+              drop(WX + 110, WY + 104 + 78 + 26, -1, () => msgBubble(ctx, "let me go～", false, 0, 0, 44, L.seg(t, 11.7, 12.1), t));
+            }
+            // title bar → valance
+            drawValance(ctx, t, k);
+            // ---- her ----
+            L.glow(ctx, 960, STAGE_Y - 220, 300, "#9fd8ff", 0.22 + 0.15 * lit);
+            const g = C.groove(t, "sing", 0.8);
+            const wave = t > 13.28 ? L.seg(t, 13.28, 13.45) : 0;
+            const pose = {
+              ...g,
+              x: 960, y: STAGE_Y + 4, s: 1.12,
+              face: slam > 0.35 ? "happy" : "sing",
+              mouth: slam > 0.35 ? 0.85 : g.mouth,
+              sparkle: t > 12.817,
+              rArm: t < 12.72 ? g.rArm : lerp(165, 130 + Math.sin(t * 13) * 22, wave),
+              rBend: t < 12.72 ? g.rBend : lerp(8, 30, wave),
+              legR: slam * 45,
+              blush: 1.2,
+              sq: g.sq + 0.1 * slam,
+            };
+            C.fish(ctx, pose);
+            if (slam > 0.05) {
+              L.sparkle(ctx, 1190, 330, 40 * slam, "#fff");
+              L.sparkle(ctx, 720, 290, 30 * slam, P.json);
+              L.sparkle(ctx, 1240, 520, 22 * slam, P.cyan);
+            }
+            L.notes(ctx, t, { n: 5, seed: 21, x: 700, y: 120, w: 520, h: 360, size: 34, color: P.cyan, alpha: 0.7 * (1 - k * 0.3) });
+            // ---- fishling audience pops in centre-outward ----
+            for (const f of FISHLINGS) {
+              const a = L.seg(t, f.tp, f.tp + 0.24);
+              if (a <= 0) continue;
+              const sc = f.s * L.ease.outBack(a);
+              const hopY = -Math.max(0, Math.sin(L.bp(t) * Math.PI)) * 10;
+              C.fishling(ctx, f.x, f.y + hopY, sc, { t, color: f.c, cheer: 1, face: L.beatIndex(t) % 2 ? "happy" : "o", flip: f.x > 960 });
+              const sp = L.seg(t, f.tp, f.tp + 0.3);
+              if (sp < 1) {
+                for (let i = 0; i < 4; i++) {
+                  const an = (i / 4) * Math.PI * 2 + 0.6;
+                  L.sparkle(ctx, f.x + Math.cos(an) * 70 * sp, f.y - 20 + Math.sin(an) * 50 * sp, 12 * (1 - sp), "#fff");
+                }
+              }
+            }
+            L.camEnd(ctx);
+            if (slam > 0.05) {
+              ctx.fillStyle = L.rgba("#fff6dc", 0.4 * slam * slam);
+              ctx.fillRect(0, 0, L.W, L.H);
+            }
+          };
+
+          /* =====================================================================
+           * 2b — 4-panel comic: four phones, four moods, then all ring together
+           * ===================================================================== */
+          const PW = 907, PH = 425;
+          const RING_T = 16.556;
+          const PANELS = [
+            { x: 40, y: 30, col: P.pink, a: "#ffb3dc", b: "#d64a98", tb: 14.211, right: false, text: "hello～?" },
+            { x: 973, y: 30, col: P.mint, a: "#b8fff0", b: "#23a7b8", tb: 14.675, right: true, text: "on it!" },
+            { x: 40, y: 481, col: P.amber, a: "#ffe9ae", b: "#e8902e", tb: 15.139, right: false, text: "TOOL??" },
+            { x: 973, y: 481, col: "#b69cff", a: "#d9ccff", b: "#6a4bd0", tb: 15.604, right: true, text: "on hold～" },
+          ];
+
+          const spiky = (ctx, x, y, rx, ry, n, col) => {
+            ctx.beginPath();
+            for (let i = 0; i < n * 2; i++) {
+              const a = (i / (n * 2)) * Math.PI * 2;
+              const r = i % 2 ? 0.78 : 1;
+              ctx.lineTo(x + Math.cos(a) * rx * r, y + Math.sin(a) * ry * r);
+            }
+            ctx.closePath();
+            C.ink(ctx, col, 5);
+          };
+
+          const panelContent = (ctx, t, i, lite = false) => {
+            const pn = PANELS[i];
+            const ringing = t >= RING_T;
+            const rp = ringing ? L.pulse(t, 5) : 0;
+            // background
+            const g = ctx.createLinearGradient(0, 0, 0, PH);
+            g.addColorStop(0, L.mixColor(pn.a, "#ffffff", 0.35 * rp));
+            g.addColorStop(1, pn.b);
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, PW, PH);
+            const herX = pn.right ? 640 : 265, phX = pn.right ? 215 : 690;
+            const feetY = PH + 120;
+            L.burst(ctx, herX, 150, { n: lite ? 10 : 16, rot: t * 0.25 + i, alpha: 0.2 + 0.15 * rp, color: "#ffffff", r0: 150, r1: 900, width: 0.08 });
+            // halftone corner
+            ctx.fillStyle = L.rgba(P.ink, 0.13);
+            if (!lite) for (let r = 0; r < 7; r++)
+              for (let c = 0; c < 10; c++) {
+                const rad = 9 * (1 - (r + c) / 16);
+                if (rad <= 1) continue;
+                L.circle(ctx, (pn.right ? PW - 20 - c * 26 : 20 + c * 26), PH - 20 - r * 26, rad);
+                ctx.fill();
+              }
+            // phone base on a little stool
+            ctx.fillStyle = L.rgba(P.ink, 0.85);
+            L.rr(ctx, phX - 95, PH - 70, 190, 22, 10);
+            ctx.fill();
+            ctx.fillRect(phX - 12, PH - 50, 24, 60);
+            const ringNow = ringing ? rp : i === 2 ? 0.6 + 0.4 * L.pulse(t, 6) : 0;
+            C.phone(ctx, phX, PH - 110, 0.95, { color: pn.col, lifted: true, ring: ringNow, t });
+            // her pose per panel
+            const gr = C.groove(t, "idle", 0.7);
+            let pose;
+            if (ringing) {
+              pose = {
+                ...gr, face: "sing", mouth: talk(t), rArm: 20, rBend: 150, lArm: 86 + 12 * Math.sin(L.bp(t) * Math.PI * 2), lBend: -45,
+                sparkle: true, blush: 1.3, dy: -12 * rp, sq: 1 + 0.08 * rp,
+              };
+            } else if (i === 0) {
+              pose = { ...gr, face: "happy", mouth: talk(t, 2), rArm: 20, rBend: 150, lArm: 65 + 20 * L.sway(t), lBend: 50, blush: 1.2 };
+            } else if (i === 1) {
+              pose = { ...gr, face: "wink", mouth: 0.45, rArm: 20, rBend: 150, lArm: 128, lBend: -28, sparkle: true, blush: 1.2 };
+            } else if (i === 2) {
+              pose = {
+                ...gr, face: "shock", mouth: 0.6, sweat: 1, rArm: 88, rBend: 0, lArm: 25, lBend: 115, hair: -0.9, ears: 25,
+                rot: -0.09 + 0.02 * Math.sin(t * 40), headTilt: -0.12,
+              };
+            } else {
+              pose = { ...gr, face: "smug", mouth: 0, rArm: 20, rBend: 150, lArm: 40, lBend: 95, headTilt: 0.12, blush: 1.4 };
+            }
+            pose = { ...pose, x: herX, y: feetY, s: 1.35, flip: pn.right };
+            L.glow(ctx, herX, feetY - 300, 240, "#ffffff", 0.35);
+            const atEar = !(i === 2 && !ringing);
+            const hp = atEar ? localToWorld(pose, EAR.bottom[0], EAR.bottom[1]) : handPos(pose, 1);
+            C.fish(ctx, pose);
+            // curly cord from the base to the handset, then the handset itself
+            cord(ctx, phX + (pn.right ? 40 : -40), PH - 120, hp.x, hp.y + (atEar ? 8 : 30), pn.col, 70);
+            if (atEar) handsetAt(ctx, pose, EAR.x, EAR.y, EAR.rot, pn.col);
+            else handset(ctx, pose, 1, pn.col);
+            // callouts
+            if (ringing) {
+              for (const sx of [-1, 1]) {
+                L.text(ctx, "RING", phX + sx * 120, PH - 215 - 10 * rp, { size: 34, font: L.FONT.block, weight: 400, color: "#fff", stroke: P.ink, strokeW: 7 });
+              }
+              const bi = L.beatIndex(t);
+              for (let b = bi - 2; b <= bi; b++) {
+                const age = t - L.beatTime(b);
+                if (age < 0 || age > 1) continue;
+                const nx = hp.x + (pn.right ? -1 : 1) * (40 + age * 160), ny = hp.y - 60 - age * 150;
+                ctx.save();
+                ctx.globalAlpha *= 1 - age;
+                L.note(ctx, nx, ny, 44, "#ffffff", b % 2 === 0, Math.sin(age * 5) * 0.3);
+                ctx.restore();
+              }
+            } else {
+              const pop = L.seg(t, pn.tb + 0.06, pn.tb + 0.34);
+              if (pop > 0) {
+                if (i === 2) {
+                  ctx.save();
+                  const s = L.ease.outBack(pop) * (1 + 0.05 * Math.sin(t * 50));
+                  ctx.translate(phX + 10, 115);
+                  ctx.scale(s, s);
+                  spiky(ctx, 0, 0, 175, 88, 13, "#ffffff");
+                  L.text(ctx, "TOOL??", 0, 4, { size: 64, font: L.FONT.block, weight: 400, color: P.red });
+                  ctx.restore();
+                } else {
+                  const bx = pn.right ? herX - 330 : herX + 330;
+                  C.bubble(ctx, bx, 92, pn.text, { size: 60, pop, tail: pn.right ? 90 : -90 });
+                }
+              }
+              if (i === 3) {
+                for (let n = 0; n < 3; n++) {
+                  const ph = (t * 0.8 + n / 3) % 1;
+                  ctx.save();
+                  ctx.globalAlpha *= Math.sin(ph * Math.PI) * L.seg(t, pn.tb, pn.tb + 0.3);
+                  L.note(ctx, hp.x - 60 - ph * 160, hp.y - 40 - ph * 170 + Math.sin(ph * 9) * 12, 40, "#ffffff", n === 1, Math.sin(ph * 6) * 0.3);
+                  ctx.restore();
+                }
+              }
+            }
+          };
+
+          // one panel, with slam-in on its beat; fly = 0..1 exit toward its corner
+          const drawPanel = (ctx, t, i, fly = 0) => {
+            const pn = PANELS[i];
+            const k = L.seg(t, pn.tb - 0.13, pn.tb);
+            if (k <= 0) return;
+            const after = t >= pn.tb ? t - pn.tb : 0;
+            const settle = t >= pn.tb ? Math.exp(-9 * after) * Math.cos(after * 30) : 0;
+            const ringing = t >= RING_T;
+            const jig = ringing ? (L.beatIndex(t) % 2 ? 1 : -1) * 0.012 * L.pulse(t, 5) * (i % 2 ? 1 : -1) : 0;
+            let s = lerp(1.45, 1, L.ease.inQuad(k)) + 0.035 * settle;
+            let rot = lerp(i % 2 ? 0.16 : -0.16, 0, L.ease.inQuad(k)) + jig;
+            const cx = pn.x + PW / 2, cy = pn.y + PH / 2;
+            let dx = 0, dy = 0;
+            if (fly > 0) {
+              const e = L.ease.inCubic(fly);
+              dx = (cx - 960) * 2.4 * e;
+              dy = (cy - 468) * 3.2 * e;
+              rot += (i % 2 ? 0.5 : -0.5) * e;
+            }
+            ctx.save();
+            ctx.globalAlpha *= Math.min(1, k * 2.5);
+            ctx.translate(cx + dx, cy + dy);
+            ctx.rotate(rot);
+            ctx.scale(s, s);
+            ctx.translate(-PW / 2, -PH / 2);
+            // drop shadow (just the two exposed edges)
+            ctx.fillStyle = "rgba(4,6,24,0.55)";
+            ctx.fillRect(PW, 16, 14, PH);
+            ctx.fillRect(14, PH, PW, 16);
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, PW, PH);
+            ctx.clip();
+            panelContent(ctx, t, i, fly > 0);
+            const flash = 1 - L.seg(t, pn.tb, pn.tb + 0.18);
+            if (flash > 0 && k >= 1) {
+              ctx.fillStyle = L.rgba("#ffffff", 0.7 * flash);
+              ctx.fillRect(0, 0, PW, PH);
+            }
+            ctx.restore();
+            ctx.lineWidth = 12;
+            ctx.strokeStyle = P.ink;
+            ctx.strokeRect(0, 0, PW, PH);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = "rgba(255,255,255,0.85)";
+            ctx.strokeRect(9, 9, PW - 18, PH - 18);
+            ctx.restore();
+            // impact ticks around the panel when it lands
+            const im = L.seg(t, pn.tb, pn.tb + 0.25);
+            if (im > 0 && im < 1 && fly === 0) {
+              ctx.save();
+              ctx.strokeStyle = L.rgba("#ffffff", 1 - im);
+              ctx.lineWidth = 6;
+              ctx.lineCap = "round";
+              for (let j = 0; j < 12; j++) {
+                const a = (j / 12) * Math.PI * 2;
+                const rx = PW * 0.56, ry = PH * 0.62;
+                const r0 = 1 + im * 0.1, r1 = r0 + 0.12;
+                ctx.beginPath();
+                ctx.moveTo(cx + Math.cos(a) * rx * r0, cy + Math.sin(a) * ry * r0);
+                ctx.lineTo(cx + Math.cos(a) * rx * r1, cy + Math.sin(a) * ry * r1);
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+          };
+
+          const comicPage = (ctx, t) => {
+            const g = ctx.createLinearGradient(0, 0, 0, L.H);
+            g.addColorStop(0, "#161d52");
+            g.addColorStop(1, "#0b1034");
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, L.W, L.H);
+            ctx.save();
+            ctx.strokeStyle = "rgba(255,255,255,0.035)";
+            ctx.lineWidth = 26;
+            for (let x = -1200; x < 2000; x += 120) {
+              ctx.beginPath();
+              ctx.moveTo(x + ((t * 40) % 120), 0);
+              ctx.lineTo(x + 1080 + ((t * 40) % 120), 1080);
+              ctx.stroke();
+            }
+            ctx.restore();
+          };
+
+          const ringText = (ctx, t, str, x, y, s, a = 1) => {
+            ctx.save();
+            ctx.globalAlpha *= a;
+            ctx.translate(x, y);
+            ctx.rotate(-0.08 + Math.sin(t * 38) * 0.02);
+            ctx.scale(s, s);
+            L.text(ctx, str, 0, 0, { size: 118, font: L.FONT.block, weight: 400, color: P.json, stroke: P.ink, strokeW: 22 });
+            ctx.restore();
+          };
+
+          const shotB = (ctx, t) => {
+            comicPage(ctx, t);
+            const shake = 10 * Math.max(...PANELS.map((pn) => (t >= pn.tb ? Math.exp(-14 * (t - pn.tb)) : 0))) + (t >= RING_T ? 6 * L.pulse(t, 8) : 0);
+            L.cam(ctx, { zoom: 1 + 0.02 * L.ep(t, 13.86, 18.04, "inOutSine") + (t >= RING_T ? 0.02 * L.barPulse(t, 6) : 0), shake, t });
+            // empty frames sketch in before the first panel lands
+            const sk = 0.5 + 0.5 * L.seg(t, 13.86, 14.1);
+            ctx.save();
+            ctx.setLineDash([22, 16]);
+            ctx.lineDashOffset = -t * 60;
+            ctx.strokeStyle = L.rgba("#8fa3ff", 0.5 * sk);
+            ctx.lineWidth = 4;
+            for (const pn of PANELS) ctx.strokeRect(pn.x, pn.y, PW, PH);
+            ctx.restore();
+            for (let i = 0; i < 4; i++) drawPanel(ctx, t, i);
+            // the phone is ringing off-panel before panel 1 lands
+            const pre = 1 - L.seg(t, 14.15, 14.3);
+            if (pre > 0) ringText(ctx, t, "RING!", 960, 468, 0.9 + 0.12 * Math.sin(t * 30) + 0.5 * Math.exp(-14 * (t - 13.863)), pre);
+            if (t >= RING_T - 0.1) {
+              const k = L.seg(t, RING_T - 0.1, RING_T);
+              const s = lerp(2.2, 1, L.ease.inQuad(k)) + 0.14 * L.pulse(t, 7) * (t >= RING_T ? 1 : 0);
+              ringText(ctx, t, "RING RING!", 960, 468, s, k);
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 2c/2d — JSON staircase room with a porthole onto the night city
+           * ===================================================================== */
+          const PX = 1990, PY = -120, PR = 230;
+          const STEPS = [
+            { tok: "{", x: 560, y: 800, w: 210, tb: 18.413 },
+            { tok: '"key"', x: 830, y: 650, w: 300, tb: 18.901 },
+            { tok: ":", x: 1100, y: 500, w: 180, tb: 19.365 },
+            { tok: "[", x: 1350, y: 350, w: 200, tb: 19.83 },
+            { tok: "}", x: 1600, y: 200, w: 220, tb: 20.294 },
+          ];
+          const GROUND = { x: 270, y: 950 };
+          const dip = (i, t) => {
+            const a = t - STEPS[i].tb;
+            return a > 0 ? 18 * Math.exp(-8 * a) * Math.sin(a * 22) : 0;
+          };
+          const blockTop = (i, t) => STEPS[i].y + Math.sin(t * 2.4 + i * 1.3) * 6 + dip(i, t);
+          const takeoff = (i) => (i === 0 ? 18.1 : STEPS[i - 1].tb + 0.11);
+
+          // where her feet are + what phase she's in
+          const hopState = (t) => {
+            if (t < takeoff(0)) return { x: GROUND.x, y: GROUND.y, air: false, i: -1, age: 9, pre: L.seg(t, 18.0, takeoff(0)) };
+            for (let i = 0; i < STEPS.length; i++) {
+              const a = takeoff(i), b = STEPS[i].tb;
+              if (t < b) {
+                const u = L.seg(t, a, b);
+                const x0 = i ? STEPS[i - 1].x : GROUND.x, y0 = i ? blockTop(i - 1, t) : GROUND.y;
+                const x1 = STEPS[i].x, y1 = blockTop(i, t);
+                return { x: lerp(x0, x1, u), y: lerp(y0, y1, u) - 190 * 4 * u * (1 - u), air: true, i, u };
+              }
+              const nxt = i + 1 < STEPS.length ? takeoff(i + 1) : 99;
+              if (t < nxt) return { x: STEPS[i].x, y: blockTop(i, t), air: false, i, age: t - b, pre: i + 1 < STEPS.length ? L.seg(t, b + 0.03, nxt) : 0 };
+            }
+            return { x: STEPS[4].x, y: blockTop(4, t), air: false, i: 4, age: t - STEPS[4].tb, pre: 0 };
+          };
+
+          const camRoom = (t) =>
+            L.kf(t, [
+              [18.039, [700, 760]],
+              [18.413, [760, 640], "inOutSine"],
+              [18.901, [1010, 490], "inOutSine"],
+              [19.365, [1270, 345], "inOutSine"],
+              [19.83, [1520, 200], "inOutSine"],
+              [20.294, [1740, 50], "inOutSine"],
+              [21.2, [1770, 20], "inOutSine"],
+              [21.711, [1790, 0], "inOutSine"],
+              [22.175, [PX, PY], "inOutCubic"],
+            ]);
+          const zoomRoom = (t) => {
+            const base = L.kf(t, [[18.039, 1.18], [20.294, 1.2], [21.2, 1.1, "inOutSine"]]);
+            if (t < 21.711) return base + 0.035 * L.barPulse(t, 6) * (t > 18.4 ? 1 : 0);
+            return base * Math.exp(Math.log(6) * L.ease.inCubic(L.seg(t, 21.711, 22.175)));
+          };
+
+          // ---- the shooting star (shared path with ch3's opening) ----
+          const starPos = (t) => {
+            const u = L.ease.inOutSine(L.seg(t, 21.42, 23.9));
+            const a = [1180, 410], c = [1000, 130], b = [-120, 60], v = 1 - u;
+            return [v * v * a[0] + 2 * v * u * c[0] + u * u * b[0], v * v * a[1] + 2 * v * u * c[1] + u * u * b[1]];
+          };
+          const starStreak = (ctx, t) => {
+            if (t < 21.42) return;
+            const fade = 1 - L.seg(t, 22.9, 23.7);
+            if (fade <= 0) return;
+            const ign = L.seg(t, 21.42, 21.6);
+            ctx.save();
+            ctx.lineCap = "round";
+            let prev = starPos(t);
+            const N = 28;
+            for (let k = 1; k <= N; k++) {
+              const tk = t - k * 0.02;
+              if (tk < 21.42) break;
+              const q = starPos(tk), f = 1 - k / N;
+              ctx.strokeStyle = L.rgba(k < 7 ? "#ffffff" : k < 16 ? P.cyan : "#7c8cff", 0.9 * f * fade);
+              ctx.lineWidth = 3 + 20 * f;
+              ctx.beginPath();
+              ctx.moveTo(prev[0], prev[1]);
+              ctx.lineTo(q[0], q[1]);
+              ctx.stroke();
+              prev = q;
+            }
+            ctx.restore();
+            const h = starPos(t);
+            // falling glitter off the tail
+            for (let k = 0; k < 12; k++) {
+              const age = ((t * 1.7 + k / 12) % 1);
+              const q = starPos(t - age * 0.5);
+              if (t - age * 0.5 < 21.42) continue;
+              L.sparkle(ctx, q[0] + (L.hash(k) - 0.5) * 30, q[1] + age * 90, 10 * (1 - age), k % 2 ? "#fff" : P.json, fade);
+            }
+            L.glow(ctx, h[0], h[1], 150, P.cyan, 0.55 * fade);
+            L.glow(ctx, h[0], h[1], 60, "#ffffff", 0.8 * fade);
+            L.sparkle(ctx, h[0], h[1], (30 + 60 * (1 - ign)) * (0.85 + 0.15 * Math.sin(t * 40)), "#fff", fade);
+            L.star(ctx, h[0], h[1], 16, 7, 5, t * 3);
+            ctx.fillStyle = L.rgba(P.json, fade);
+            ctx.fill();
+          };
+
+          const outside = (ctx, t, ox, oy) => {
+            L.nightSky(ctx, t, { stars: 90, horizon: "#2b3f93" });
+            ctx.save();
+            ctx.translate(ox, oy);
+            C.moon(ctx, 1250, 300, 72);
+            C.city(ctx, t, { y: 1010, scroll: 400, layers: 2, lit: 0.32, keys: true });
+            ctx.restore();
+            starStreak(ctx, t);
+          };
+
+          const WALL_TXT = ['{ "tool": "sing" }', '"args": {}', "[ ]", '"swing": true', "{ }", '"key": [', "null", '"tempo": 129'];
+          const roomWall = (ctx, t, vis, z) => {
+            const g = ctx.createLinearGradient(0, -900, 0, 1000);
+            g.addColorStop(0, "#101748");
+            g.addColorStop(1, "#1b2466");
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.rect(-1500, -2500, 5500, 4500);
+            ctx.moveTo(PX + PR, PY);
+            ctx.arc(PX, PY, PR, 0, Math.PI * 2, true);
+            ctx.fill("evenodd");
+            // faint code on the wall
+            for (let i = 0; i < 16 && z < 2; i++) {
+              const x = -300 + L.hash(i * 3.7) * 2700, y = -800 + L.hash(i * 9.1) * 1650;
+              if (Math.hypot(x - PX, y - PY) < PR + 200 || !vis(x, y, 300)) continue;
+              L.text(ctx, WALL_TXT[i % WALL_TXT.length], x, y + Math.sin(t * 0.8 + i) * 10, { size: 34 + L.hash(i) * 30, font: L.FONT.mono, weight: 700, color: L.rgba("#8fa3ff", 0.1) });
+            }
+            // gold dust
+            for (let i = 0; i < 36 && z < 2; i++) {
+              const x = -200 + L.hash(i * 5.3) * 2600 + Math.sin(t * 0.7 + i) * 30;
+              const y = 1000 - ((L.hash(i * 2.1) * 1900 + t * 40) % 1900);
+              if (!vis(x, y, 12)) continue;
+              L.sparkle(ctx, x, y, 5 + 5 * Math.sin(t * 3 + i), P.json, 0.5);
+            }
+            // floor
+            ctx.fillStyle = "#0a0f30";
+            ctx.fillRect(-1500, 950, 5500, 800);
+            ctx.fillStyle = L.rgba(P.json, 0.5);
+            ctx.fillRect(-1500, 948, 5500, 4);
+            // porthole ring
+            if (z < 2) L.glow(ctx, PX, PY, PR + 180, "#bfe0ff", 0.12);
+            ctx.lineWidth = 34;
+            ctx.strokeStyle = P.ink;
+            L.circle(ctx, PX, PY, PR + 16);
+            ctx.stroke();
+            ctx.lineWidth = 26;
+            const rg = ctx.createLinearGradient(PX - PR, PY - PR, PX + PR, PY + PR);
+            rg.addColorStop(0, "#ffe6a0");
+            rg.addColorStop(0.5, P.gold);
+            rg.addColorStop(1, "#9a6a2a");
+            ctx.strokeStyle = rg;
+            ctx.stroke();
+            for (let i = 0; i < 10; i++) {
+              const a = (i / 10) * Math.PI * 2;
+              ctx.fillStyle = "#7a4f1c";
+              L.circle(ctx, PX + Math.cos(a) * (PR + 16), PY + Math.sin(a) * (PR + 16), 5);
+              ctx.fill();
+            }
+          };
+
+          const drawStep = (ctx, t, i) => {
+            const st = STEPS[i];
+            const top = blockTop(i, t), w = st.w, h = 150, x = st.x - w / 2;
+            const lit = t >= st.tb;
+            const age = t - st.tb;
+            if (lit) L.glow(ctx, st.x, top + 60, 230, P.json, 0.24 + 0.2 * L.barPulse(t, 5) + 0.3 * Math.exp(-5 * age));
+            // chunky depth
+            L.rr(ctx, x + 12, top + 14, w, h, 26);
+            ctx.fillStyle = lit ? "#8a5a1c" : "#0c1238";
+            ctx.fill();
+            L.rr(ctx, x, top, w, h, 26);
+            if (lit) {
+              const g = ctx.createLinearGradient(0, top, 0, top + h);
+              g.addColorStop(0, "#fff0b0");
+              g.addColorStop(0.4, P.json);
+              g.addColorStop(1, "#e09a34");
+              ctx.fillStyle = g;
+            } else ctx.fillStyle = "#1d2663";
+            ctx.fill();
+            ctx.lineWidth = 6;
+            ctx.strokeStyle = lit ? P.ink : "#4a5cb8";
+            ctx.stroke();
+            L.text(ctx, st.tok, st.x, top + h / 2 + 6, { size: st.tok.length > 1 ? 84 : 124, font: L.FONT.mono, weight: 700, color: lit ? P.ink : "#6f82de" });
+            if (lit && age < 0.5) {
+              const k = age / 0.5;
+              ctx.save();
+              ctx.globalAlpha *= 1 - k;
+              ctx.strokeStyle = "#fff6c8";
+              ctx.lineWidth = 8 * (1 - k) + 2;
+              L.ellipse(ctx, st.x, top, w * 0.5 + 170 * k, 22 + 50 * k);
+              ctx.stroke();
+              ctx.restore();
+              for (let j = 0; j < 8; j++) {
+                const a = -Math.PI * (0.1 + 0.8 * (j / 7));
+                L.sparkle(ctx, st.x + Math.cos(a) * (60 + 170 * k), top + Math.sin(a) * (40 + 140 * k), 20 * (1 - k), j % 2 ? "#fff" : P.json);
+              }
+            }
+          };
+
+          // the glowing call() arrow
+          const arrow = (ctx, x, y, ang, s, glow = 1, alpha = 1) => {
+            ctx.save();
+            ctx.globalAlpha *= alpha;
+            L.glow(ctx, x, y, 260 * s, P.cyan, 0.4 * glow);
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            ctx.scale(s, s);
+            // fletching
+            for (const sy of [-1, 1]) {
+              ctx.beginPath();
+              ctx.moveTo(-150, 0);
+              ctx.lineTo(-185, sy * 34);
+              ctx.lineTo(-120, sy * 6);
+              ctx.closePath();
+              C.ink(ctx, P.pink, 4);
+            }
+            L.rr(ctx, -160, -19, 270, 38, 19);
+            const g = ctx.createLinearGradient(0, -19, 0, 19);
+            g.addColorStop(0, "#ffffff");
+            g.addColorStop(1, "#9ff6ff");
+            C.ink(ctx, g, 5);
+            ctx.beginPath();
+            ctx.moveTo(98, -40);
+            ctx.lineTo(170, 0);
+            ctx.lineTo(98, 40);
+            ctx.closePath();
+            C.ink(ctx, P.json, 5);
+            L.text(ctx, "call()", -30, 1, { size: 30, font: L.FONT.mono, weight: 700, color: P.ink });
+            ctx.restore();
+          };
+
+          const THROW = 21.223, HIT = 21.42;
+          const throwPose = (t) => {
+            const wind = L.ep(t, 20.85, THROW - 0.02, "inOutSine");
+            const rel = L.seg(t, THROW, THROW + 0.1);
+            const cheer = L.seg(t, 21.711, 21.8);
+            const g = C.groove(t, "idle", 0.8);
+            if (t < THROW) {
+              return {
+                ...g, face: t < 20.759 ? "happy" : "determined", mouth: t < 20.759 ? 0.6 : 0.1, look: [0.8, -0.7],
+                rArm: lerp(160, 178, wind), rBend: lerp(12, 30, wind), lArm: lerp(60, 80, wind), lBend: 40,
+                rot: -0.13 * wind, legL: 18 * wind, sq: 1 + 0.06 * wind, blush: 1.1,
+              };
+            }
+            if (t < 21.711) {
+              return {
+                ...g, face: "open", mouth: 0.55, sparkle: true, look: [1, -1],
+                rArm: lerp(178, 95, L.ease.outCubic(rel)), rBend: 0, lArm: lerp(80, 40, rel), lBend: 40,
+                rot: lerp(-0.13, 0.1, L.ease.outCubic(rel)) * (1 - L.seg(t, 21.35, 21.7)), legR: 30 * rel * (1 - L.seg(t, 21.4, 21.7)), blush: 1.2,
+              };
+            }
+            return {
+              ...C.groove(t, "hop", 1), face: "happy", mouth: 0.8, sparkle: true, blush: 1.4,
+              lArm: lerp(40, 155, cheer), rArm: lerp(95, 160, cheer), lBend: 10, rBend: 10,
+            };
+          };
+
+          const roomShot = (ctx, t) => {
+            const cam = camRoom(t), z = zoomRoom(t);
+            const ox = -(cam[0] - 1790) * 0.1, oy = -(cam[1] - 0) * 0.1;
+            const vis = (x, y, r) => {
+              const sx = (x - cam[0]) * z + 960, sy = (y - cam[1]) * z + 540, sr = r * z;
+              return sx + sr > 0 && sx - sr < L.W && sy + sr > 0 && sy - sr < L.H;
+            };
+            // the outside is only seen through the porthole: clip it there (cheap), full-frame once we're through
+            const psx = (PX - cam[0]) * z + 960, psy = (PY - cam[1]) * z + 540, psr = (PR + 24) * z;
+            if (psr > 1110 && Math.hypot(psx - 960, psy - 540) < psr - 1102) outside(ctx, t, ox, oy);
+            else if (vis(PX, PY, PR + 24)) {
+              ctx.save();
+              L.circle(ctx, psx, psy, psr);
+              ctx.clip();
+              outside(ctx, t, ox, oy);
+              ctx.restore();
+            }
+            if (z > 6.3) return; // fully through the porthole
+            L.cam(ctx, { zoom: z, x: cam[0], y: cam[1] });
+            roomWall(ctx, t, vis, z);
+            // big drifting JSON glyphs at mid depth (parallax)
+            const GL = ["{", "}", "[", "]", ":", ","];
+            for (let i = 0; i < 11 && z < 2; i++) {
+              const d = 0.35 + 0.35 * L.hash(i * 4.1);
+              const bx = -300 + L.hash(i * 7.3) * 2600 + cam[0] * (1 - d), by = -700 + L.hash(i * 2.9) * 1700 + cam[1] * (1 - d) + Math.sin(t * 0.9 + i) * 20;
+              const fade = L.seg(Math.hypot(bx - PX, by - PY), PR + 180, PR + 380);
+              if (fade <= 0 || !vis(bx, by, 260)) continue;
+              ctx.save();
+              ctx.globalAlpha *= fade;
+              ctx.translate(bx, by);
+              ctx.rotate(Math.sin(t * 0.5 + i) * 0.2);
+              ctx.font = `700 ${Math.round(160 + 200 * L.hash(i * 1.7))}px "${L.FONT.mono}", monospace`;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.lineWidth = 5;
+              ctx.strokeStyle = L.rgba(i % 3 ? P.json : P.cyan, 0.13 + 0.08 * L.pulse(t, 4));
+              ctx.strokeText(GL[i % GL.length], 0, 0);
+              ctx.restore();
+            }
+            for (let i = 0; i < STEPS.length; i++) if (vis(STEPS[i].x, STEPS[i].y + 75, 320)) drawStep(ctx, t, i);
+            // sparkle trail behind her hops
+            if (t < 20.738) {
+              for (let k = 1; k <= 7; k++) {
+                const hk = hopState(t - k * 0.035);
+                if (!hk.air) continue;
+                L.sparkle(ctx, hk.x + (L.hash(k + L.beatIndex(t)) - 0.5) * 30, hk.y - 150, 16 * (1 - k / 8), k % 2 ? P.json : "#ffffff", 0.9);
+              }
+            }
+            // ---- her ----
+            let pose;
+            if (t < 20.738) {
+              const h = hopState(t);
+              const g = C.groove(t, "idle", 0.8);
+              if (h.air) {
+                const u = h.u;
+                pose = {
+                  ...g, x: h.x, y: h.y, face: "happy", mouth: 0.7, sparkle: true,
+                  lArm: 150 + 15 * Math.sin(u * 6), rArm: 150 - 15 * Math.sin(u * 6), lBend: 15, rBend: 15,
+                  legL: 35 * Math.sin(u * Math.PI), legR: 45 * Math.sin(u * Math.PI), sq: lerp(0.9, 1, Math.abs(u - 0.5) * 2),
+                  hair: -0.7 + u * 1.2, tail: -25 * Math.sin(u * Math.PI), ears: -20,
+                };
+              } else {
+                const land = h.age < 9 ? Math.exp(-11 * h.age) : 0;
+                const top = h.i === 4 && h.age > 0.1;
+                pose = {
+                  ...g, x: h.x, y: h.y, face: top ? "happy" : "open", mouth: top ? 0.8 : 0.35, sparkle: true,
+                  lArm: top ? 155 : lerp(80, 150, land), rArm: top ? 160 : lerp(80, 150, land), lBend: 15, rBend: 15,
+                  sq: 1 + 0.2 * land + 0.12 * (h.pre || 0), dy: 0, blush: 1.3,
+                };
+              }
+              pose.s = 0.95;
+            } else {
+              const h = { x: STEPS[4].x, y: blockTop(4, t) };
+              pose = { ...throwPose(t), x: h.x, y: h.y, s: 0.95 };
+            }
+            const herVis = vis(pose.x, pose.y - 170, 260);
+            if (herVis) {
+              L.glow(ctx, pose.x, pose.y - 170, 300, "#a8d8ff", 0.22);
+              C.fish(ctx, pose);
+            }
+            // ---- the call() arrow ----
+            if (t >= 20.759 && t < HIT) {
+              const hp = handPos(pose, 1);
+              const ang = Math.atan2(PY - hp.y, PX - hp.x);
+              if (t < THROW) {
+                const pop = L.ease.outBack(L.seg(t, 20.759, 21.0));
+                arrow(ctx, hp.x + Math.cos(ang) * 130, hp.y + Math.sin(ang) * 130, ang, 0.95 * pop, 0.6 + 0.5 * L.seg(t, 20.9, THROW) + 0.2 * Math.sin(t * 30));
+                if (pop < 1) for (let j = 0; j < 6; j++) L.sparkle(ctx, hp.x + Math.cos(j) * 120 * pop, hp.y - 20 + Math.sin(j) * 90 * pop, 18 * (1 - pop) + 4, "#fff");
+              } else {
+                const hr = handPos({ ...throwPose(THROW - 0.001), x: STEPS[4].x, y: blockTop(4, THROW), s: 0.95 }, 1);
+                const a0 = Math.atan2(PY - hr.y, PX - hr.x);
+                const rel = [hr.x + Math.cos(a0) * 130, hr.y + Math.sin(a0) * 130];
+                const u = L.ease.inQuad(L.seg(t, THROW, HIT));
+                const pos = (uu) => [lerp(rel[0], PX, uu), lerp(rel[1], PY, uu)];
+                const a2 = Math.atan2(PY - rel[1], PX - rel[0]);
+                // motion-blur ghosts + speed lines
+                for (let gI = 5; gI >= 1; gI--) {
+                  const q = pos(Math.max(0, u - gI * 0.07));
+                  arrow(ctx, q[0], q[1], a2, lerp(0.95, 0.5, u), 0.4, 0.14 * (6 - gI));
+                }
+                ctx.save();
+                ctx.strokeStyle = L.rgba("#dffcff", 0.7);
+                ctx.lineCap = "round";
+                for (let j = 0; j < 6; j++) {
+                  const off = (j - 2.5) * 18, q0 = pos(Math.max(0, u - 0.5)), q1 = pos(u);
+                  ctx.lineWidth = 4;
+                  ctx.beginPath();
+                  ctx.moveTo(q0[0] - Math.sin(a2) * off, q0[1] + Math.cos(a2) * off);
+                  ctx.lineTo(q1[0] - Math.sin(a2) * off * 0.4 - Math.cos(a2) * 80, q1[1] + Math.cos(a2) * off * 0.4 - Math.sin(a2) * 80);
+                  ctx.stroke();
+                }
+                ctx.restore();
+                const q = pos(u);
+                arrow(ctx, q[0], q[1], a2, lerp(0.95, 0.5, u), 1.2);
+              }
+            }
+            // flash in the porthole as the arrow ignites into a star
+            const ig = L.seg(t, HIT, HIT + 0.3);
+            if (ig > 0 && ig < 1) {
+              L.glow(ctx, PX, PY, 420 * (1 - ig) + 100, "#ffffff", 0.8 * (1 - ig));
+              for (let j = 0; j < 10; j++) {
+                const a = (j / 10) * Math.PI * 2;
+                L.sparkle(ctx, PX + Math.cos(a) * 260 * ig, PY + Math.sin(a) * 260 * ig, 24 * (1 - ig), j % 2 ? P.cyan : P.json);
+              }
+            }
+            // the "call()" beat: speech pop at the throw
+            const yell = L.seg(t, THROW, THROW + 0.2) * (1 - L.seg(t, 21.62, 21.72));
+            if (yell > 0) C.bubble(ctx, STEPS[4].x - 250, blockTop(4, t) - 440, "call()!", { size: 50, pop: yell, font: L.FONT.mono, tail: 60 });
+            L.camEnd(ctx);
+          };
+
+          const shotC = (ctx, t) => {
+            roomShot(ctx, t);
+            // the comic panels fly apart to reveal the room
+            const fly = L.seg(t, 18.039, 18.32);
+            if (fly < 1) for (let i = 0; i < 4; i++) drawPanel(ctx, t, i, fly);
+          };
+
+          const shotD = (ctx, t) => {
+            roomShot(ctx, t);
+            // a gentle flash as we punch through the porthole on the downbeat
+            const f = t >= 22.175 ? Math.exp(-7 * (t - 22.175)) : 0;
+            if (f > 0.02) {
+              ctx.fillStyle = L.rgba("#cfeaff", 0.35 * f);
+              ctx.fillRect(0, 0, L.W, L.H);
+            }
+          };
+
+          L.mountChapter({
+            id: ID,
+            t0: T0,
+            dur: T1 - T0,
+            shots: [
+              { a: T0, b: 13.863, draw: shotA },
+              { a: 13.863, b: 18.039, draw: shotB },
+              { a: 18.039, b: 20.738, draw: shotC },
+              { a: 20.738, b: T1, draw: shotD },
+            ],
+            post: (ctx) => L.vignette(ctx, 0.5),
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>

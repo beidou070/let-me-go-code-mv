@@ -1,0 +1,1050 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+  </head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; }
+        #ch7-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-6jwt" id="root" data-composition-id="ch7" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-zm25" id="ch7-canvas" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+        (function () {
+          /* Chapter 7 — break + scat (86.761 – 101.482). A 1950s "WHALE NOTE" record sleeve come alive:
+           * flat duotone blocks (navy / one bright blue / cream), heavy + condensed type, bold geometry. She stays on-model.
+           * 7a 86.76–90.74 (inst.)   blue shutter opens into the sleeve; LET ME GO slams (87.05); record slides out; she plays a giant keyboard with her TAIL; glissando on 88.89
+           * 7b 90.74–94.16 (inst.)   user: 「……所以工具调用了吗？」 → she shushes it 「嘘～」 → the bubble sulks → tail-whack into orbit (92.58)
+           * 7c 94.16–95.76 BA·DA·BA·DOO   syllable tiles slam; each syllable ticks the DUE clock a quarter turn → alarm on DOO
+           * 7d 95.76–97.63 SKOO·BE·DOO    phone rings, she picks up on BE, points at YOU (97.15)
+           * 7e 97.63–99.47 DOO·BA·DEE     gold-brace birds rattle their cage; she zaps the lock (98.99) → the JSON flies free
+           * 7f 99.47–101.48 SHOO·BE·DOO   swung triplets, then a giant extruded ME! at the peak (99.92) while she points at herself; re-hit on the sung "me!" (100.82)
+           */
+          const L = LIB, C = CAST, P = L.P;
+          const ID = "ch7", T0 = 86.761, T1 = 101.482;
+          const D2R = Math.PI / 180;
+          const NAVY = "#0c1a4b", NAVY_D = "#070f33", BLUE = "#1d5cf5", CREAM = "#f3e8cc";
+          const FB = L.FONT.block, FT = L.FONT.tall, FZ = L.FONT.zh;
+
+          /* ---------------- helpers ---------------- */
+          const ink = (ctx, fill, lw) => {
+            ctx.fillStyle = fill;
+            ctx.fill();
+            ctx.lineWidth = lw;
+            ctx.strokeStyle = P.ink;
+            ctx.stroke();
+          };
+          const hit = (t, lag = 0) => {
+            const b = L.bp(t - lag), nb = Math.round(b);
+            return { k: Math.cos(Math.min(0.5, Math.abs(b - nb)) * Math.PI), nb };
+          };
+          /** envelope that fires at each listed time */
+          const env = (t, times, k = 7) => {
+            let v = 0;
+            for (const tb of times) if (t >= tb) v = Math.max(v, Math.exp(-k * (t - tb)));
+            return v;
+          };
+          const toWorld = (p, X, Y) => {
+            const s = p.s || 1, sq = p.sq || 1, fx = p.flip ? -1 : 1, r = p.rot || 0;
+            const x = X * s * sq * fx, y = (Y * s) / sq;
+            const c = Math.cos(r), sn = Math.sin(r);
+            return { x: (p.x || 0) + x * c - y * sn, y: (p.y || 0) + (p.dy || 0) * s + x * sn + y * c };
+          };
+          const limb = (p, side) => {
+            const up = (side < 0 ? p.lArm : p.rArm) || 0, bend = (side < 0 ? p.lBend : p.rBend) || 0;
+            const dir = (deg) => [side * Math.sin(deg * D2R), Math.cos(deg * D2R)];
+            const d1 = dir(up), d2 = dir(up - bend);
+            const sh = [side * 27, -157];
+            const el = [sh[0] + d1[0] * 36, sh[1] + d1[1] * 36];
+            const hd = [el[0] + d2[0] * 33, el[1] + d2[1] * 33];
+            return { el: toWorld(p, el[0], el[1]), hd: toWorld(p, hd[0], hd[1]) };
+          };
+          /** world position of her tail fluke (mirror of the rig's tail curve) */
+          const tailTip = (p, ext = 28) => {
+            const wag = (p.tail || 0) * D2R, a = wag * 0.7;
+            const ex = 150 * Math.cos(a) + 16 * Math.sin(a), ey = 150 * Math.sin(a) - 16 * Math.cos(a);
+            const ang = Math.atan2(ey - 44, ex - 128) + wag * 0.9;
+            const lx = ex + Math.cos(ang) * ext, ly = ey + Math.sin(ang) * ext;
+            const r = wag * 0.45, c = Math.cos(r), sn = Math.sin(r);
+            return toWorld(p, lx * c - ly * sn + 14, lx * sn + ly * c - 92);
+          };
+          /** an index finger added to one of her fists (the rig has round hands) */
+          const finger = (ctx, hand, ang, s, len = 26) => {
+            const lw = (2.6 + 1.4 * s) / s;
+            ctx.save();
+            ctx.translate(hand.x, hand.y);
+            ctx.rotate(ang);
+            ctx.scale(s, s);
+            L.rr(ctx, 2, -5.5, len + 4, 11, 5.5);
+            ink(ctx, P.skin, lw * 0.8);
+            ctx.fillStyle = "#ffdce4";
+            L.rr(ctx, len - 3, -3.5, 6, 7, 3);
+            ctx.fill();
+            L.circle(ctx, 0, 0, 12);
+            ink(ctx, P.skin, lw * 0.8);
+            ctx.restore();
+          };
+          /** text centred on its real glyph box. o: {align:'left'|'center', shadow, sx, sy, stroke, strokeW} */
+          const glyph = (ctx, str, x, cy, size, font, color, o = {}) => {
+            ctx.save();
+            ctx.font = `400 ${size}px "${font}", "${FZ}", sans-serif`;
+            ctx.textAlign = o.align || "center";
+            ctx.textBaseline = "alphabetic";
+            const m = ctx.measureText(str);
+            const by = cy + (m.actualBoundingBoxAscent - m.actualBoundingBoxDescent) / 2;
+            if (o.shadow) {
+              ctx.fillStyle = o.shadow;
+              ctx.fillText(str, x + (o.sx || 8), by + (o.sy || 8));
+            }
+            if (o.stroke) {
+              ctx.lineJoin = "round";
+              ctx.strokeStyle = o.stroke;
+              ctx.lineWidth = o.strokeW || size * 0.08;
+              ctx.strokeText(str, x, by);
+            }
+            ctx.fillStyle = color;
+            ctx.fillText(str, x, by);
+            ctx.restore();
+            return m.width;
+          };
+          const fitSize = (ctx, str, font, maxW, maxH, base = 400) => {
+            ctx.font = `400 ${base}px "${font}"`;
+            const m = ctx.measureText(str);
+            const h = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
+            return Math.min((base * maxW) / m.width, (base * maxH) / h);
+          };
+          /** kinetic slam: returns null before it starts, else {sc, a} (scale 2.4→1 landing exactly on tb, then wobble) */
+          const slam = (t, tb, from = 2.4, pre = 0.1) => {
+            if (t < tb - pre) return null;
+            const k = L.seg(t, tb - pre, tb);
+            const after = Math.max(0, t - tb);
+            const wob = t >= tb ? Math.exp(-after * 9) * Math.sin(after * 38) * 0.07 : 0;
+            return { sc: L.lerp(from, 1, L.ease.inCubic(k)) + wob, a: Math.min(1, k * 1.8) };
+          };
+          const withScale = (ctx, x, y, sc, fn) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(sc, sc);
+            ctx.translate(-x, -y);
+            fn();
+            ctx.restore();
+          };
+          const GRAIN = Array.from({ length: 300 }, (_, i) => [L.hash(i * 1.37) * 1920, L.hash(i * 2.71 + 3) * 1080, 1 + L.hash(i * 5.3) * 2.2, L.hash(i * 7.9) > 0.5]);
+          const grain = (ctx) => {
+            for (const [x, y, r, light] of GRAIN) {
+              ctx.fillStyle = light ? "rgba(255,248,230,0.08)" : "rgba(0,0,25,0.1)";
+              ctx.fillRect(x, y, r, r);
+            }
+          };
+          const logo = (ctx, x, y, fg, bg) => {
+            ctx.fillStyle = bg;
+            ctx.fillRect(x, y, 280, 88);
+            glyph(ctx, "WHALE NOTE", x + 140, y + 32, 31, FB, fg);
+            ctx.fillStyle = fg;
+            ctx.fillRect(x + 18, y + 54, 244, 3);
+            L.text(ctx, "BLP 1024  ·  STEREO", x + 140, y + 72, { size: 24, font: FT, weight: 400, color: fg, tracking: 3 });
+          };
+          const sleeveRecord = (ctx, x, y, r, rot) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rot);
+            L.circle(ctx, 0, 0, r);
+            ctx.fillStyle = NAVY_D;
+            ctx.fill();
+            ctx.strokeStyle = "rgba(243,232,204,0.13)";
+            ctx.lineWidth = 2;
+            for (let k = r * 0.42; k < r * 0.96; k += 8) {
+              L.circle(ctx, 0, 0, k);
+              ctx.stroke();
+            }
+            ctx.strokeStyle = "rgba(243,232,204,0.22)";
+            ctx.lineWidth = r * 0.12;
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.7, -0.9, -0.35);
+            ctx.stroke();
+            L.circle(ctx, 0, 0, r * 0.35);
+            ctx.fillStyle = CREAM;
+            ctx.fill();
+            ctx.strokeStyle = BLUE;
+            ctx.lineWidth = r * 0.04;
+            L.circle(ctx, 0, 0, r * 0.29);
+            ctx.stroke();
+            C.whaleIcon(ctx, 0, 4, (r * 0.3) / 44, NAVY, true);
+            ctx.fillStyle = NAVY_D;
+            L.circle(ctx, 0, 0, r * 0.025);
+            ctx.fill();
+            ctx.restore();
+          };
+          /** flat 50s starburst */
+          const starburst = (ctx, x, y, r0, r1, n, rot, fill) => {
+            ctx.beginPath();
+            for (let i = 0; i < n * 2; i++) {
+              const a = rot + (i * Math.PI) / n, r = i % 2 ? r0 : r1;
+              ctx.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
+            }
+            ctx.closePath();
+            ctx.fillStyle = fill;
+            ctx.fill();
+          };
+
+          /* =====================================================================
+           * 7a — sleeve opens; she plays the giant keyboard with her tail
+           * ===================================================================== */
+          const A_DB = 87.052, A_HI = 88.886;
+          const KW = 96, KY = 772;
+          const TITLE = "LET ME GO";
+          const poseA = (t) => {
+            const g = C.groove(t, "strut", 0.7);
+            const { k } = hit(t);
+            const jump = Math.sin(Math.PI * L.seg(t, A_HI - 0.12, A_HI + 0.34));
+            const hi = t > A_HI - 0.12 && t < A_HI + 0.7;
+            return {
+              ...g,
+              x: 390 + 44 * Math.max(0, L.bp(t) - L.bp(A_DB)), y: KY - 8, dy: -jump * 60, s: 1.42,
+              face: hi ? "happy" : L.beatIndex(t) % 4 === 3 ? "wink" : "smug",
+              mouth: hi ? 0.8 : 0, sparkle: hi, blush: 1.25,
+              tail: hi ? L.lerp(40, -40, L.seg(t, A_HI - 0.05, A_HI + 0.4)) : L.lerp(-18, 46, k),
+              lArm: 78 + 18 * L.sway(t), lBend: 95, rArm: 78 - 18 * L.sway(t), rBend: 95,
+              legL: hi ? 30 * jump : g.legL, legR: hi ? 30 * jump : g.legR,
+            };
+          };
+          const shotA = (ctx, t) => {
+            const open = L.ep(t, 86.8, A_DB, "outCubic");
+            const top = L.lerp(0, 300, open), bot = L.lerp(1080, KY, open);
+            const zoom = 1 + L.barPulse(t, 6) * 0.025 + (t > A_HI ? 0.04 * Math.exp(-(t - A_HI) * 4) : 0);
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: 960, y: 470, zoom });
+            // title: letters drop in and land on the downbeat; words bump on beats; wave on the glissando
+            const size = fitSize(ctx, TITLE, FB, 1480, 196);
+            ctx.font = `400 ${size}px "${FB}"`;
+            let x = 70;
+            const bi0 = L.beatIndex(A_DB);
+            for (let i = 0; i < TITLE.length; i++) {
+              const ch = TITLE[i], w = ctx.measureText(ch).width;
+              if (ch !== " ") {
+                const tl = A_DB - 0.02 + i * 0.006;
+                const fall = L.ease.inCubic(L.seg(t, tl - 0.13, tl));
+                const word = i < 3 ? 0 : i < 6 ? 1 : 2;
+                const bump = (L.beatIndex(t) - bi0) % 3 === word && t > A_DB + 0.3 ? L.pulse(t, 8) : 0;
+                const wave = Math.max(0, Math.sin(Math.PI * L.seg(t, A_HI + i * 0.035, A_HI + i * 0.035 + 0.28)));
+                const settle = t > tl ? Math.exp(-(t - tl) * 11) * Math.sin((t - tl) * 32) * 14 : 0;
+                const yy = 172 - (1 - fall) * 420 + settle - wave * 40 - bump * 10;
+                if (fall > 0) glyph(ctx, ch, x + w / 2, yy, size, FB, CREAM, { shadow: BLUE, sx: 9, sy: 9 });
+              }
+              x += w;
+            }
+            if (open > 0.5) {
+              ctx.globalAlpha = L.seg(open, 0.5, 1);
+              L.text(ctx, "THE WHALE MAID  ·  LONG PLAYING  ·  SWING SESSION NO. 7", 1560, 268, { size: 34, font: FT, weight: 400, color: CREAM, align: "right", tracking: 5 });
+              logo(ctx, 1590, 58, NAVY, CREAM);
+              ctx.globalAlpha = 1;
+            }
+            // blue band (starts full-frame = hand-off from ch6's groove dive)
+            ctx.fillStyle = BLUE;
+            ctx.fillRect(-80, top, 2080, bot - top);
+            // record sliding out of its sleeve
+            const rx = L.lerp(1690, 1430, L.ep(t, 86.85, 87.3, "outCubic"));
+            sleeveRecord(ctx, rx, 536, 205, t * 3.4);
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(1476, 322, 460, 428);
+            ctx.strokeStyle = CREAM;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(1498, 344, 400, 384);
+            glyph(ctx, "12\"", 1700, 470, 150, FT, CREAM);
+            L.text(ctx, "LONG PLAYING", 1700, 590, { size: 40, font: FT, weight: 400, color: CREAM, tracking: 6 });
+            L.text(ctx, "MICROGROOVE", 1700, 640, { size: 30, font: FT, weight: 400, color: BLUE, tracking: 8 });
+            // her + the keys she plays
+            const p = poseA(t);
+            L.circle(ctx, p.x, 535, 240);
+            ctx.fillStyle = CREAM;
+            ctx.fill();
+            // lit keys: tail hits on each of the last beats + the glissando run
+            const lit = new Array(21).fill(0);
+            const bNow = L.beatIndex(t);
+            for (let b = bNow - 3; b <= bNow; b++) {
+              const tb = L.beatTime(b);
+              if (tb < A_DB - 0.01 || t < tb) continue;
+              const tip = tailTip(poseA(tb));
+              const ki = Math.floor(tip.x / KW);
+              if (ki >= 0 && ki < 21) lit[ki] = Math.max(lit[ki], Math.exp(-(t - tb) * 4));
+            }
+            if (t > A_HI) {
+              const k0 = Math.floor(tailTip(poseA(A_HI)).x / KW);
+              for (let j = 0; j < 12; j++) {
+                const tj = A_HI + j * 0.04, ki = k0 + j;
+                if (t >= tj && ki < 21) lit[ki] = Math.max(lit[ki], Math.exp(-(t - tj) * 3));
+              }
+            }
+            ctx.fillStyle = NAVY_D;
+            ctx.fillRect(-80, KY - 10, 2080, 14);
+            for (let i = 0; i < 21; i++) {
+              const on = lit[i] > 0.3, dip = 7 * lit[i];
+              ctx.fillStyle = on ? BLUE : CREAM;
+              ctx.fillRect(i * KW + 2, KY + 4 + dip, KW - 4, 196);
+              if (on) {
+                ctx.fillStyle = CREAM;
+                ctx.fillRect(i * KW + 14, KY + 150 + dip, KW - 28, 8);
+              }
+            }
+            for (let i = 0; i < 20; i++) {
+              if (![0, 1, 3, 4, 5].includes(i % 7)) continue;
+              ctx.fillStyle = NAVY_D;
+              ctx.fillRect((i + 1) * KW - 27, KY + 4, 54, 112);
+            }
+            // notes popping out of the struck keys
+            for (let b = bNow - 4; b <= bNow; b++) {
+              const tb = L.beatTime(b), age = t - tb;
+              if (tb < A_DB - 0.01 || age < 0 || age > 1.6) continue;
+              const tip = tailTip(poseA(tb));
+              ctx.save();
+              ctx.globalAlpha = 1 - L.seg(age, 1.0, 1.6);
+              L.note(ctx, tip.x + 40 + age * 90, KY - 40 - age * 240, 44 * L.ease.outBack(L.seg(age, 0, 0.25)), b % 2 ? CREAM : NAVY, b % 3 === 0, Math.sin(age * 5) * 0.3);
+              ctx.restore();
+            }
+            C.fish(ctx, p);
+            // impact ticks where the fluke lands
+            if (t > A_DB - 0.01) {
+              const tb = L.beatTime(bNow), age = t - tb;
+              if (age >= 0 && age < 0.3 && tb >= A_DB - 0.01) {
+                const tip = tailTip(poseA(tb));
+                ctx.save();
+                ctx.strokeStyle = CREAM;
+                ctx.lineWidth = 8;
+                ctx.lineCap = "round";
+                const k = age / 0.3;
+                for (let i = 0; i < 5; i++) {
+                  const a = -Math.PI * (0.15 + 0.175 * i), r0 = 60 + 70 * k;
+                  ctx.globalAlpha = 1 - k;
+                  ctx.beginPath();
+                  ctx.moveTo(tip.x + Math.cos(a) * r0, KY + 6 + Math.sin(a) * r0);
+                  ctx.lineTo(tip.x + Math.cos(a) * (r0 + 34), KY + 6 + Math.sin(a) * (r0 + 34));
+                  ctx.stroke();
+                }
+                ctx.restore();
+              }
+            }
+            // finger-snap sparkles on beats
+            const sn = L.pulse(t, 9);
+            if (t > A_DB) for (const side of [-1, 1]) {
+              const h = limb(p, side).hd;
+              L.sparkle(ctx, h.x + side * 26, h.y - 26, 22 * sn, CREAM);
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 7b — "……所以工具调用了吗？"  →  嘘～  →  tail-whack
+           * ===================================================================== */
+          const B_POP = 90.744, B_LOOK = 91.185, B_SHH = 91.649, B_DROOP = 92.114, B_WHACK = 92.578;
+          const USER_Q = "……所以工具调用了吗？";
+          const tailB = (t) => L.kf(t, [[92.114, 10], [92.45, 44, "outQuad"], [B_WHACK, -10, "inQuad"], [92.76, -72, "outQuad"], [93.3, -20, "inOutSine"], [93.8, 0]]);
+          const poseB = (t) => {
+            const g = C.groove(t, "idle", 0.7);
+            let p = { ...g, x: 720, y: 1012, s: 1.75, blush: 1.2, lArm: 16, lBend: 25, rArm: 16, rBend: 25, face: "happy", mouth: 0.2 };
+            if (t < B_LOOK) {
+              p = { ...p, face: "happy", mouth: 0.3 };
+            } else if (t < B_SHH) {
+              p = { ...p, face: "open", look: [1, -0.7], headTilt: 0.08, mouth: 0.15 };
+            } else if (t < 92.4) {
+              p = { ...p, face: "wink", blink: 0, look: [0.7, -0.4], headTilt: 0.1, blush: 1.5, mouth: 0, lArm: -20, lBend: 160, lFront: true };
+            } else if (t < 93.9) {
+              const dust = Math.sin(t * 22) * 10 * L.seg(t, 92.9, 93.1) * (1 - L.seg(t, 93.5, 93.7));
+              p = { ...p, face: "smug", mouth: 0, look: [0.4, 0], lArm: 40 + dust, lBend: 95, rArm: 40 - dust, rBend: 95, headTilt: -0.06 };
+            } else {
+              p = { ...p, face: "sing", mouth: 0.5, lArm: 32, lBend: 135, lHold: "mic" };
+            }
+            if (t > 92.114 && t < 93.8) p.tail = tailB(t);
+            return p;
+          };
+          const bubbleBox = (ctx) => {
+            ctx.save();
+            ctx.font = `700 56px "${FZ}", sans-serif`;
+            const w = ctx.measureText(USER_Q).width + 84;
+            ctx.restore();
+            return { w, h: 112 };
+          };
+          const drawUserBubble = (ctx, x, y, sc, rot, sad) => {
+            const { w, h } = bubbleBox(ctx);
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(rot);
+            ctx.scale(sc, sc);
+            ctx.fillStyle = BLUE;
+            L.rr(ctx, -w / 2 + 10, -h / 2 + 10, w, h, 22);
+            ctx.fill();
+            ctx.fillStyle = NAVY;
+            L.rr(ctx, -w / 2, -h / 2, w, h, 22);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.moveTo(w / 2 - 70, h / 2 - 2);
+            ctx.lineTo(w / 2 - 22, h / 2 + 30);
+            ctx.lineTo(w / 2 - 36, h / 2 - 2);
+            ctx.fill();
+            L.text(ctx, USER_Q, 0, 2, { size: 56, font: FZ, weight: 700, color: CREAM });
+            L.text(ctx, "USER", -w / 2 + 6, -h / 2 - 24, { size: 32, font: FT, weight: 400, color: NAVY, align: "left", tracking: 4 });
+            if (sad > 0) {
+              ctx.globalAlpha = sad;
+              ctx.beginPath();
+              ctx.moveTo(w / 2 - 8, -h / 2 - 30);
+              ctx.quadraticCurveTo(w / 2 - 22, -h / 2 - 2, w / 2 - 8, -h / 2 + 2);
+              ctx.quadraticCurveTo(w / 2 + 6, -h / 2 - 2, w / 2 - 8, -h / 2 - 30);
+              ink(ctx, "#bfe8ff", 3);
+            }
+            ctx.restore();
+          };
+          const shotB = (ctx, t) => {
+            const sinceW = t - B_WHACK;
+            const shake = sinceW >= 0 ? 16 * Math.exp(-sinceW * 8) : 0;
+            const zoom = 1 + 0.035 * L.ep(t, B_POP, 94.155, "inOutSine") + L.barPulse(t, 6) * 0.02;
+            ctx.fillStyle = CREAM;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: 960, y: 560, zoom, shake, t });
+            // sleeve furniture
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(-60, -60, 190, 1200);
+            ctx.save();
+            ctx.translate(70, 540);
+            ctx.rotate(-Math.PI / 2);
+            L.text(ctx, "WHALE NOTE  ·  SIDE B  ·  BLP 1024", 0, 0, { size: 44, font: FT, weight: 400, color: CREAM, tracking: 8 });
+            ctx.restore();
+            L.text(ctx, "RECORDED LIVE ON THE NIGHT SHIFT", 1870, 62, { size: 38, font: FT, weight: 400, color: NAVY, align: "right", tracking: 5 });
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(1100, 92, 770, 5);
+            L.circle(ctx, 720, 600, 330);
+            ctx.fillStyle = BLUE;
+            ctx.fill();
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(-60, 906, 2040, 240);
+            // 嘘～
+            const sh = L.seg(t, B_SHH - 0.06, B_SHH + 0.22);
+            if (sh > 0 && t < 92.7) {
+              const out = L.seg(t, 92.4, 92.7);
+              const sc = L.ease.outBack(sh) * (1 + 0.05 * L.pulse(t, 6));
+              withScale(ctx, 400, 250, sc, () => {
+                ctx.globalAlpha = 1 - out;
+                glyph(ctx, "嘘～", 400, 250 - out * 40, 200, FZ, BLUE, { shadow: NAVY, sx: 8, sy: 8 });
+              });
+              ctx.save();
+              ctx.globalAlpha = 1 - out;
+              ctx.strokeStyle = NAVY;
+              ctx.lineWidth = 9;
+              ctx.lineCap = "round";
+              for (let i = 0; i < 3; i++) {
+                const a = -0.5 + i * 0.5, r0 = 150 + 10 * Math.sin(t * 12 + i);
+                ctx.beginPath();
+                ctx.moveTo(620 - Math.cos(a) * r0, 380 + Math.sin(a) * r0 * 0.6);
+                ctx.lineTo(620 - Math.cos(a) * (r0 + 50), 380 + Math.sin(a) * (r0 + 50) * 0.6);
+                ctx.stroke();
+              }
+              ctx.restore();
+            }
+            // her
+            const p = poseB(t);
+            C.fish(ctx, p);
+            if (t >= B_SHH && t < 92.4) finger(ctx, limb(p, -1).hd, -Math.PI / 2 + 0.28, p.s, 28);
+            // the user's question: pop → sulk → whacked away
+            const { w } = bubbleBox(ctx);
+            const tipW = tailTip(poseB(B_WHACK));
+            const home = { x: 1340, y: 300 }, droop = { x: tipW.x + w / 2 - 34, y: tipW.y - 16 };
+            const pop = L.seg(t, B_POP - 0.06, B_POP + 0.28);
+            if (pop > 0) {
+              let bx, by, rot, sc, sad = 0;
+              if (t < B_WHACK) {
+                const dk = L.ep(t, B_DROOP, 92.45, "inOutCubic");
+                bx = L.lerp(home.x, droop.x, dk);
+                by = L.lerp(home.y, droop.y, dk) + Math.sin(t * 3) * 6;
+                rot = L.lerp(-0.03, -0.1, dk) + (t > B_SHH && t < B_DROOP ? Math.sin((t - B_SHH) * 40) * 0.03 * Math.exp(-(t - B_SHH) * 6) : 0);
+                sc = L.ease.outBack(pop) * L.lerp(1, 0.9, dk);
+                sad = L.seg(t, B_DROOP, B_DROOP + 0.2);
+              } else {
+                const u = sinceW;
+                bx = droop.x + 1500 * u;
+                by = droop.y - 1450 * u + 0.5 * 1300 * u * u;
+                rot = -0.1 + 9 * u;
+                sc = 0.9 * (1 - 0.5 * L.seg(u, 0, 0.6));
+              }
+              if (by > -300 && bx < 2400) drawUserBubble(ctx, bx, by, sc, rot, sad);
+            }
+            if (sinceW >= 0 && sinceW < 0.5) {
+              const k = L.seg(sinceW, 0, 0.45);
+              const sc = L.ease.outBack(L.seg(sinceW, 0, 0.14)) * (1 - 0.3 * k);
+              ctx.save();
+              ctx.globalAlpha = 1 - L.seg(k, 0.6, 1);
+              withScale(ctx, tipW.x + 30, tipW.y - 30, sc, () => {
+                starburst(ctx, tipW.x + 30, tipW.y - 30, 70, 150, 12, 0.2, BLUE);
+                glyph(ctx, "PAF!", tipW.x + 30, tipW.y - 30, 76, FB, CREAM);
+              });
+              ctx.restore();
+            }
+            // it becomes a tiny star far away
+            const tw = L.seg(t, 93.35, 93.7);
+            if (tw > 0) L.sparkle(ctx, 1790, 150, 46 * Math.sin(Math.PI * tw) + 10 * (tw >= 1 ? L.pulse(t, 5) : 0), NAVY);
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 7c — BA · DA · BA · DOO + the DUE clock
+           * ===================================================================== */
+          const SYL_C = [
+            { s: "BA", tb: 94.155, x: 70, y: 80, bg: BLUE, fg: CREAM },
+            { s: "DA", tb: 94.412, x: 520, y: 80, bg: CREAM, fg: NAVY },
+            { s: "BA", tb: 94.854, x: 70, y: 500, bg: CREAM, fg: BLUE },
+            { s: "DOO", tb: 95.318, x: 520, y: 500, bg: BLUE, fg: CREAM },
+          ];
+          const C_ALARM = 95.318;
+          const tile = (ctx, t, d, w, h) => {
+            const sl = slam(t, d.tb, 2.6);
+            if (!sl) return;
+            const blk = L.seg(t, d.tb - 0.1, d.tb - 0.02);
+            const cx = d.x + w / 2, cy = d.y + h / 2;
+            withScale(ctx, cx, cy, L.lerp(1.25, 1, L.ease.outCubic(blk)), () => {
+              ctx.globalAlpha = blk;
+              ctx.fillStyle = d.bg;
+              ctx.fillRect(d.x, d.y, w, h);
+              ctx.globalAlpha = 1;
+            });
+            const size = fitSize(ctx, d.s, FT, w - 50, h - 40);
+            withScale(ctx, cx, cy, sl.sc * (1 + 0.04 * L.pulse(t, 7)), () => {
+              ctx.globalAlpha = sl.a;
+              glyph(ctx, d.s, cx, cy, size, FT, d.fg);
+            });
+          };
+          const clockHand = (ctx, x, y, ang, len, w, col) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(ang);
+            ctx.fillStyle = col;
+            L.rr(ctx, -w / 2, -w / 2, len + w / 2, w, w / 2);
+            ctx.fill();
+            ctx.restore();
+          };
+          const shotC = (ctx, t) => {
+            const alarm = t >= C_ALARM ? 1 : 0;
+            const zoom = 1 + L.barPulse(t, 6) * 0.03 + env(t, SYL_C.map((d) => d.tb), 9) * 0.015;
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: 960, y: 540, zoom, shake: alarm * 6 * Math.exp(-(t - C_ALARM) * 5), t });
+            SYL_C.forEach((d) => tile(ctx, t, d, 430, 400));
+            // the DUE clock
+            const cx = 1450, cy = 380, R = 300;
+            const buzz = alarm ? Math.sin(t * 70) : 0;
+            ctx.save();
+            ctx.translate(buzz * 5, 0);
+            for (const sd of [-1, 1]) {
+              ctx.save();
+              ctx.translate(cx + sd * 200, cy - 238);
+              ctx.rotate(sd * 0.5 + buzz * 0.18);
+              ctx.fillStyle = BLUE;
+              ctx.beginPath();
+              ctx.arc(0, 0, 78, Math.PI, 0);
+              ctx.closePath();
+              ctx.fill();
+              ctx.fillStyle = CREAM;
+              ctx.fillRect(-8, -100, 16, 26);
+              ctx.restore();
+            }
+            ctx.fillStyle = CREAM;
+            ctx.fillRect(cx - 10 + buzz * 22, cy - R - 60, 20, 60);
+            L.circle(ctx, cx + buzz * 22, cy - R - 64, 18);
+            ctx.fill();
+            L.circle(ctx, cx, cy, R);
+            ctx.fillStyle = CREAM;
+            ctx.fill();
+            ctx.lineWidth = 18;
+            ctx.strokeStyle = BLUE;
+            L.circle(ctx, cx, cy, R - 9);
+            ctx.stroke();
+            for (let i = 0; i < 12; i++) {
+              const a = (i / 12) * Math.PI * 2, big = i % 3 === 0;
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(a);
+              ctx.fillStyle = NAVY;
+              ctx.fillRect(R - 58, -(big ? 8 : 4), big ? 36 : 22, big ? 16 : 8);
+              ctx.restore();
+            }
+            // DUE on the face; flips to an inverse flag when the alarm fires
+            if (!alarm) glyph(ctx, "DUE", cx, cy - 138, 92, FB, BLUE);
+            else {
+              const sc = 1 + 0.25 * Math.exp(-(t - C_ALARM) * 8);
+              withScale(ctx, cx, cy - 138, sc, () => {
+                ctx.fillStyle = BLUE;
+                ctx.fillRect(cx - 150, cy - 196, 300, 116);
+                glyph(ctx, "DUE!", cx, cy - 138, 92, FB, CREAM);
+              });
+            }
+            // minute hand ticks a quarter turn on every syllable; hour hand sits just before twelve
+            let f = 0;
+            for (const d of SYL_C) f += 0.25 * L.ease.outBack(L.seg(t, d.tb - 0.03, d.tb + 0.12));
+            clockHand(ctx, cx, cy, -Math.PI / 2 - 0.1 + (alarm ? 0.1 * L.seg(t, C_ALARM, C_ALARM + 0.1) : 0), 150, 24, NAVY);
+            clockHand(ctx, cx, cy, -Math.PI / 2 + f * Math.PI * 2, 232, 16, NAVY);
+            L.circle(ctx, cx, cy, 22);
+            ctx.fillStyle = BLUE;
+            ctx.fill();
+            if (alarm) {
+              ctx.strokeStyle = CREAM;
+              ctx.lineWidth = 8;
+              ctx.lineCap = "round";
+              for (const sd of [-1, 1])
+                for (let i = 0; i < 3; i++) {
+                  const a = -Math.PI / 2 + sd * (0.75 + i * 0.28), r0 = R + 110 + 12 * Math.sin(t * 40 + i);
+                  ctx.beginPath();
+                  ctx.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0);
+                  ctx.lineTo(cx + Math.cos(a) * (r0 + 46), cy + Math.sin(a) * (r0 + 46));
+                  ctx.stroke();
+                }
+            }
+            ctx.restore();
+            // her, scatting in front of the clock
+            const e = env(t, SYL_C.map((d) => d.tb), 6);
+            const shrug = L.ep(t, C_ALARM + 0.12, C_ALARM + 0.3, "outBack");
+            const g = C.groove(t, "sing");
+            C.fish(ctx, {
+              ...g,
+              x: cx, y: 1032, s: 1.55,
+              dy: -26 * e, sq: 1 + 0.06 * e,
+              face: shrug > 0 ? "smug" : "sing", mouth: shrug > 0 ? 0.1 : 0.25 + 0.75 * e, blush: 1.3,
+              rArm: L.lerp(g.rArm, 84, shrug), rBend: L.lerp(g.rBend, 118, shrug),
+              headTilt: 0.12 * shrug, look: shrug > 0 ? [-0.6, 0] : [0, 0],
+            });
+            ctx.fillStyle = CREAM;
+            ctx.save();
+            ctx.translate(1890, 900);
+            ctx.rotate(-Math.PI / 2);
+            L.text(ctx, "BLP 1024  ·  SIDE B", 0, 0, { size: 30, font: FT, weight: 400, color: CREAM, align: "left", tracking: 6 });
+            ctx.restore();
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 7d — SKOO · BE · DOO + phone; she points at YOU
+           * ===================================================================== */
+          const SYL_D = [
+            { s: "SKOO", tb: 95.782, y: 235 },
+            { s: "BE", tb: 96.247, y: 490 },
+            { s: "DOO", tb: 96.711, y: 745 },
+          ];
+          const D_PICK = 96.247, D_POINT = 97.152;
+          const poseD = (t) => {
+            const g = C.groove(t, "swing", 0.8);
+            let p = { ...g, x: 1390, y: 1045, s: 1.9, blush: 1.25, face: "happy", mouth: 0.3 };
+            if (t < 96.05) p = { ...p, face: "open", look: [1, 0], mouth: 0.4, rArm: 40, rBend: 30 };
+            else if (t < D_PICK) {
+              const r = L.seg(t, 96.05, D_PICK);
+              p = { ...p, face: "open", look: [1, 0.3], rArm: L.lerp(40, 70, r), rBend: 10 };
+            } else {
+              p = { ...p, rArm: 38, rBend: 128, rHold: "phone", face: t < D_POINT ? "sing" : "wink", sparkle: t >= D_POINT };
+              p.mouth = t < D_POINT ? 0.3 + 0.5 * Math.abs(Math.sin(L.bp(t) * Math.PI)) : 0.6;
+            }
+            if (t >= D_POINT - 0.08) {
+              const k = L.ep(t, D_POINT - 0.08, D_POINT, "outBack");
+              p = { ...p, lArm: L.lerp(p.lArm, 84, k), lBend: L.lerp(p.lBend, 16, k), lFront: true, headTilt: -0.08 * k };
+            }
+            return p;
+          };
+          const shotD = (ctx, t) => {
+            const p = poseD(t);
+            const tipHand = limb(p, -1).hd;
+            const push = L.ep(t, D_POINT - 0.05, D_POINT + 0.18, "outBack");
+            const zoom = 1 + L.barPulse(t, 6) * 0.025 + 0.08 * push;
+            ctx.fillStyle = BLUE;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: L.lerp(960, tipHand.x, 0.3 * push), y: L.lerp(540, tipHand.y, 0.3 * push), zoom });
+            // syllables stacked left
+            SYL_D.forEach((d) => {
+              const sl = slam(t, d.tb, 2.4);
+              if (!sl) return;
+              const size = fitSize(ctx, d.s, FB, 820, 205);
+              ctx.font = `400 ${size}px "${FB}"`;
+              const w = ctx.measureText(d.s).width;
+              withScale(ctx, 90 + w / 2, d.y, sl.sc * (1 + 0.04 * L.pulse(t, 7)), () => {
+                ctx.globalAlpha = sl.a;
+                glyph(ctx, d.s, 90, d.y, size, FB, CREAM, { align: "left", shadow: NAVY, sx: 10, sy: 10 });
+              });
+            });
+            // navy block slides in from the right
+            const bx = L.lerp(1920, 1040, L.ep(t, 95.762, 95.9, "outCubic"));
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(bx, -80, 1000, 1240);
+            L.circle(ctx, 1390 + (bx - 1040), 560, 300);
+            ctx.fillStyle = CREAM;
+            ctx.fill();
+            // phone on a cream plinth
+            ctx.fillStyle = CREAM;
+            ctx.fillRect(1712 + (bx - 1040), 868, 220, 300);
+            const lifted = t >= D_PICK;
+            const ring = lifted ? 0 : 0.35 + 0.65 * L.pulse(t, 6);
+            C.phone(ctx, 1815 + (bx - 1040), 835, 1.0, { lifted, ring, t });
+            C.fish(ctx, p);
+            const hands = { r: limb(p, 1).hd };
+            if (lifted) {
+              ctx.save();
+              ctx.strokeStyle = P.pink;
+              ctx.lineWidth = 5;
+              ctx.beginPath();
+              const ax = 1832, ay = 830, ex = hands.r.x + 6, ey = hands.r.y + 36;
+              for (let i = 0; i <= 60; i++) {
+                const u = i / 60;
+                const px = L.lerp(ax, ex, u) + Math.cos(u * 42) * 8;
+                const py = L.lerp(ay, ey, u) + Math.sin(u * Math.PI) * 90 + Math.sin(u * 42) * 8;
+                i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+              }
+              ctx.stroke();
+              ctx.restore();
+            }
+            // point at YOU: short foreshortened finger + calling rings
+            if (t >= D_POINT - 0.04) {
+              finger(ctx, tipHand, Math.PI + 0.35, p.s, 14);
+              const tipX = tipHand.x - 24 * p.s * Math.cos(0.35), tipY = tipHand.y - 24 * p.s * Math.sin(0.35);
+              for (let i = 0; i < 4; i++) {
+                const age = t - (D_POINT + i * 0.11);
+                if (age < 0) continue;
+                const k = (age % 0.44) / 0.44;
+                ctx.save();
+                ctx.globalAlpha = (1 - k) * 0.9;
+                ctx.strokeStyle = CREAM;
+                ctx.lineWidth = 10 * (1 - k) + 2;
+                L.circle(ctx, tipX, tipY, 30 + k * 360);
+                ctx.stroke();
+                ctx.restore();
+              }
+              const yk = L.seg(t, D_POINT - 0.04, D_POINT + 0.16);
+              withScale(ctx, 1250, 262, L.ease.outBack(yk) * (1 + 0.05 * L.pulse(t, 7)), () => {
+                glyph(ctx, "YOU!", 1250, 262, 150, FB, CREAM, { shadow: BLUE, sx: 10, sy: 10 });
+              });
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 7e — DOO · BA · DEE; the JSON braces break out of their cage
+           * ===================================================================== */
+          const SYL_E = [
+            { s: "DOO", tb: 97.633, x: 270, col: NAVY },
+            { s: "BA", tb: 98.081, x: 640, col: BLUE },
+            { s: "DEE", tb: 98.545, x: 990, col: NAVY },
+          ];
+          const E_FREE = 98.987;
+          const CG = { x: 1550, top: 470, bot: 845, hw: 200 };
+          const BIRDS = [
+            { x: 1450, v: [380, -760] },
+            { x: 1550, v: [560, -900] },
+            { x: 1650, v: [760, -700] },
+          ];
+          const braceBird = (ctx, x, y, s, flap, t, i) => {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(s, s);
+            for (const sd of [-1, 1]) {
+              ctx.save();
+              ctx.rotate(-sd * flap);
+              C.brace(ctx, sd * 34, -4, 92, sd < 0 ? 1 : -1, { color: P.json, width: 11 });
+              ctx.restore();
+            }
+            L.circle(ctx, 0, 0, 24);
+            ink(ctx, P.json, 4);
+            ctx.fillStyle = P.ink;
+            for (const sd of [-1, 1]) {
+              L.circle(ctx, sd * 8, -5, 3.6);
+              ctx.fill();
+            }
+            ctx.beginPath();
+            ctx.moveTo(-6, 5);
+            ctx.lineTo(0, 14);
+            ctx.lineTo(6, 5);
+            ink(ctx, P.amber, 3);
+            ctx.restore();
+          };
+          const shotE = (ctx, t) => {
+            const free = t - E_FREE;
+            const beatsE = SYL_E.map((d) => d.tb);
+            const rattle = env(t, beatsE, 8);
+            const zoom = 1 + L.barPulse(t, 6) * 0.025 + (free >= 0 ? 0.03 * Math.exp(-free * 5) : 0);
+            ctx.fillStyle = CREAM;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: 960, y: 540, zoom, shake: free >= 0 ? 14 * Math.exp(-free * 8) : 0, t });
+            ctx.fillStyle = BLUE;
+            ctx.fillRect(1190, -80, 900, 1240);
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(-80, 905, 1270, 240);
+            SYL_E.forEach((d) => {
+              const sl = slam(t, d.tb, 2.5);
+              if (!sl) return;
+              const size = fitSize(ctx, d.s, FT, 330, 250);
+              withScale(ctx, d.x, 205, sl.sc * (1 + 0.05 * L.pulse(t, 7)), () => {
+                ctx.globalAlpha = sl.a;
+                glyph(ctx, d.s, d.x, 205, size, FT, d.col);
+              });
+            });
+            L.text(ctx, "THE JSON'S FREE", 1860, 60, { size: 40, font: FT, weight: 400, color: CREAM, align: "right", tracking: 6 });
+            // the cage
+            const sx = Math.sin(t * 60) * 7 * rattle;
+            const barX = (i) => CG.x - CG.hw + (i * 2 * CG.hw) / 10;
+            ctx.save();
+            ctx.lineCap = "round";
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(CG.x - CG.hw - 25, CG.bot, 2 * CG.hw + 50, 44);
+            ctx.fillRect(CG.x - 60, CG.bot + 44, 120, 90);
+            ctx.fillRect(CG.x - 130, CG.bot + 120, 260, 30);
+            ctx.strokeStyle = NAVY;
+            ctx.lineWidth = 9;
+            if (free < 0) {
+              ctx.translate(sx, 0);
+              for (let i = 0; i <= 10; i++) {
+                const x = barX(i);
+                ctx.beginPath();
+                ctx.moveTo(x, CG.bot);
+                ctx.lineTo(x, CG.top);
+                ctx.quadraticCurveTo(x, CG.top - 110, CG.x + (x - CG.x) * 0.1, CG.top - 150);
+                ctx.stroke();
+              }
+              ctx.lineWidth = 12;
+              for (const y of [CG.top, CG.bot - 6]) {
+                ctx.beginPath();
+                ctx.moveTo(CG.x - CG.hw - 6, y);
+                ctx.lineTo(CG.x + CG.hw + 6, y);
+                ctx.stroke();
+              }
+              ctx.lineWidth = 9;
+              L.circle(ctx, CG.x, CG.top - 172, 22);
+              ctx.stroke();
+              // padlock
+              ctx.fillStyle = P.amber;
+              ctx.beginPath();
+              ctx.arc(CG.x, 740, 22, Math.PI, 0);
+              ctx.strokeStyle = P.amber;
+              ctx.lineWidth = 8;
+              ctx.stroke();
+              L.rr(ctx, CG.x - 32, 740, 64, 52, 8);
+              ink(ctx, P.amber, 4);
+              ctx.fillStyle = P.ink;
+              L.circle(ctx, CG.x, 762, 6);
+              ctx.fill();
+            } else {
+              // bars burst outward and tumble
+              for (let i = 0; i <= 10; i++) {
+                const x = barX(i), dx = (x - CG.x) / CG.hw;
+                const vx = dx * 900 + (L.hash(i * 3.1) - 0.5) * 300, vy = -700 - L.hash(i * 5.7) * 600;
+                const cx = x + vx * free, cy = (CG.top + CG.bot) / 2 + vy * free + 0.5 * 2600 * free * free;
+                ctx.save();
+                ctx.translate(cx, cy);
+                ctx.rotate((L.hash(i * 9.3) - 0.5) * 14 * free);
+                ctx.beginPath();
+                ctx.moveTo(0, -190);
+                ctx.lineTo(0, 190);
+                ctx.stroke();
+                ctx.restore();
+              }
+              ctx.save();
+              ctx.translate(CG.x + 200 * free, CG.top - 120 - 1300 * free + 0.5 * 2600 * free * free);
+              ctx.rotate(7 * free);
+              ctx.beginPath();
+              ctx.ellipse(0, 0, CG.hw, 90, 0, Math.PI, 0);
+              ctx.stroke();
+              ctx.restore();
+              const lk = L.seg(free, 0, 0.5);
+              ctx.save();
+              ctx.translate(CG.x - 500 * free, 760 - 900 * free + 0.5 * 2600 * free * free);
+              ctx.rotate(-9 * free);
+              L.rr(ctx, -32, 0, 64, 52, 8);
+              ink(ctx, P.amber, 4);
+              ctx.restore();
+              if (lk < 1) {
+                ctx.globalAlpha = 1 - lk;
+                starburst(ctx, CG.x, 680, 90 + 200 * lk, 190 + 330 * lk, 14, 0.3, CREAM);
+                ctx.globalAlpha = 1;
+              }
+            }
+            ctx.restore();
+            // perch
+            if (free < 0) {
+              ctx.fillStyle = CREAM;
+              ctx.fillRect(CG.x - CG.hw + 20 + sx, 718, 2 * CG.hw - 40, 10);
+            }
+            // brace birds
+            BIRDS.forEach((b, i) => {
+              let x = b.x + sx, y = 672 - 12 * rattle * Math.abs(Math.sin(t * 30 + i)), flap = 0.12 + 0.5 * rattle * Math.abs(Math.sin(t * 34 + i)), s = 1.22;
+              if (free >= 0) {
+                const u = free;
+                x = b.x + b.v[0] * u + Math.sin(u * 9 + i) * 30;
+                y = 680 + b.v[1] * u + 0.5 * 500 * u * u;
+                flap = 0.75 * Math.sin(t * 30 + i * 1.3);
+                s = 1.22 + 0.4 * L.seg(u, 0, 0.5);
+                // punctuation feathers
+                for (let k = 0; k < 4; k++) {
+                  const fu = u - k * 0.08;
+                  if (fu < 0) continue;
+                  const fx = b.x + b.v[0] * fu * 0.8 + Math.sin(fu * 6 + k) * 20, fy = 680 + b.v[1] * fu * 0.8 + 180 * fu * fu + k * 20;
+                  L.text(ctx, [":", ",", '"', ":"][k], fx, fy, { size: 44, font: L.FONT.mono, weight: 700, color: P.json, stroke: P.ink, strokeW: 5, alpha: 1 - L.seg(fu, 0.2, 0.5) });
+                }
+              }
+              braceBird(ctx, x, y, s, flap, t, i);
+            });
+            // her: scat with the mic, then zap the lock
+            const g = C.groove(t, "sing", 0.8);
+            const zap = L.ep(t, E_FREE - 0.16, E_FREE, "inCubic");
+            const e = env(t, beatsE, 6);
+            const p = {
+              ...g,
+              x: 640, y: 1010, s: 1.6, dy: -22 * e, blush: 1.2,
+              lArm: free >= 0 ? 96 : 20 + 10 * L.sway(t), lBend: free >= 0 ? -30 + 30 * Math.sin(t * 14) : 20,
+              rArm: free >= 0 ? 100 : L.lerp(32, 100, zap), rBend: free >= 0 ? 0 : L.lerp(135, 0, zap), rHold: "mic",
+              face: free >= 0 ? "happy" : "sing", mouth: free >= 0 ? 0.8 : 0.25 + 0.7 * e, sparkle: free >= 0,
+              look: [1, -0.4],
+            };
+            C.fish(ctx, p);
+            if (free > -0.03 && free < 0.25) {
+              const h = limb(p, 1).hd;
+              ctx.save();
+              ctx.globalAlpha = 1 - L.seg(free, 0.1, 0.25);
+              ctx.strokeStyle = NAVY;
+              ctx.lineWidth = 14;
+              ctx.lineJoin = "round";
+              ctx.beginPath();
+              ctx.moveTo(h.x + 40, h.y - 20);
+              for (let i = 1; i <= 8; i++) {
+                const u = i / 8;
+                ctx.lineTo(L.lerp(h.x + 40, CG.x - 20, u), L.lerp(h.y - 20, 760, u) + (i % 2 ? -26 : 26) * (i < 8 ? 1 : 0));
+              }
+              ctx.stroke();
+              ctx.strokeStyle = P.json;
+              ctx.lineWidth = 6;
+              ctx.stroke();
+              ctx.restore();
+            }
+            L.camEnd(ctx);
+          };
+
+          /* =====================================================================
+           * 7f — SHOO · BE · DOO (swung triplet) → ME!
+           * ===================================================================== */
+          const SYL_F = [
+            { s: "SHOO", tb: 99.451 },
+            { s: "BE", tb: 99.605 },
+            { s: "DOO", tb: 99.76 },
+          ];
+          const F_ME = 99.915, F_ME2 = 100.821;
+          const shotF = (ctx, t) => {
+            const sinceMe = t - F_ME;
+            const hits = [F_ME, 100.357, F_ME2, 101.285];
+            const bumpE = env(t, hits, 7);
+            const shake = (sinceMe >= 0 ? 26 * Math.exp(-sinceMe * 7) : 0) + (t >= F_ME2 ? 12 * Math.exp(-(t - F_ME2) * 8) : 0);
+            const zoom = 1 + L.ep(t, F_ME, T1, "outCubic") * 0.06 + 0.02 * bumpE;
+            ctx.fillStyle = NAVY;
+            ctx.fillRect(0, 0, L.W, L.H);
+            L.cam(ctx, { x: 960, y: 540, zoom, shake, t });
+            ctx.fillStyle = BLUE;
+            ctx.beginPath();
+            ctx.moveTo(-100, 1180);
+            ctx.lineTo(-100, 740);
+            ctx.lineTo(2020, 250);
+            ctx.lineTo(2020, 1180);
+            ctx.closePath();
+            ctx.fill();
+            // triplet syllables across the top
+            let x = 90;
+            SYL_F.forEach((d) => {
+              const size = 150;
+              ctx.font = `400 ${size}px "${FT}"`;
+              const w = ctx.measureText(d.s).width;
+              const sl = slam(t, d.tb, 2.2, 0.07);
+              if (sl) {
+                withScale(ctx, x + w / 2, 142, sl.sc, () => {
+                  ctx.globalAlpha = sl.a;
+                  glyph(ctx, d.s, x + w / 2, 142, size, FT, CREAM, { shadow: BLUE, sx: 7, sy: 7 });
+                });
+              }
+              x += w + 40;
+            });
+            // ME!
+            const MX = 1320, MY = 520;
+            if (sinceMe >= -0.1) {
+              const sl = slam(t, F_ME, 3.4, 0.1);
+              const rays = L.seg(sinceMe, 0, 0.2);
+              if (rays > 0) {
+                ctx.save();
+                ctx.globalAlpha = rays;
+                for (let i = 0; i < 16; i++) {
+                  const a0 = (i / 16) * Math.PI * 2 + t * 0.25;
+                  ctx.beginPath();
+                  ctx.moveTo(MX, MY);
+                  ctx.arc(MX, MY, 1500, a0, a0 + Math.PI / 16);
+                  ctx.closePath();
+                  ctx.fillStyle = "rgba(243,232,204,0.07)";
+                  ctx.fill();
+                }
+                ctx.restore();
+                starburst(ctx, MX, MY, 330 + 20 * bumpE, 420 + 40 * bumpE, 18, t * 0.3, BLUE);
+              }
+              const size = fitSize(ctx, "ME!", FB, 860, 400);
+              const depth = Math.round(L.lerp(7, 15, L.ep(t, F_ME2 - 0.05, F_ME2 + 0.2, "outBack")));
+              const sc = sl.sc * (1 + 0.06 * bumpE);
+              withScale(ctx, MX, MY, sc, () => {
+                ctx.globalAlpha = sl.a;
+                ctx.save();
+                ctx.translate(MX, MY);
+                ctx.rotate(-0.06 + 0.03 * Math.sin(L.bp(t) * Math.PI));
+                ctx.translate(-MX, -MY);
+                for (let i = depth; i >= 1; i--) glyph(ctx, "ME!", MX + i * 7, MY + i * 7, size, FB, L.mixColor(NAVY, NAVY_D, i / depth));
+                glyph(ctx, "ME!", MX, MY, size, FB, CREAM, { stroke: NAVY_D, strokeW: 12 });
+                ctx.restore();
+              });
+              for (let i = 0; i < 6; i++) {
+                const a = (i / 6) * Math.PI * 2 + 0.4;
+                L.sparkle(ctx, MX + Math.cos(a) * 470, MY + Math.sin(a) * 300, 30 * L.pulse(t - i * 0.05, 5), CREAM);
+              }
+            }
+            // her, pointing at herself
+            const antic = L.seg(t, 99.45, F_ME);
+            const pop = t >= F_ME;
+            const e = env(t, SYL_F.map((d) => d.tb), 9);
+            const hop = t >= F_ME2 ? Math.sin(Math.PI * L.seg(t, F_ME2, F_ME2 + 0.4)) : 0;
+            const up = pop ? Math.sin(Math.PI * L.seg(t, F_ME, F_ME + 0.36)) : 0;
+            L.circle(ctx, 600, 570, 292);
+            ctx.fillStyle = CREAM;
+            ctx.fill();
+            const g = C.groove(t, "idle", 0.7);
+            let p = { ...g, x: 600, y: 1030, s: 1.95, blush: 1.3 };
+            if (!pop) {
+              p = { ...p, face: "sing", mouth: 0.3 + 0.7 * e, sq: 1 + 0.07 * antic, dy: 10 * antic, lArm: 32, lBend: 135, lHold: "mic", rArm: 30, rBend: 40 };
+            } else {
+              p = {
+                ...p,
+                face: t >= F_ME2 ? "wink" : "smug", sparkle: true, blush: 1.5, mouth: t >= F_ME2 ? 0.7 : 0.35,
+                dy: -44 * up - 34 * hop, sq: 1 - 0.05 * up,
+                lArm: 124, lBend: -22, lHold: "mic",
+                rArm: 20, rBend: 120, rFront: true,
+                headTilt: 0.1, legL: 20 * hop, legR: 20 * hop,
+              };
+            }
+            C.fish(ctx, p);
+            if (pop) finger(ctx, limb(p, 1).hd, -Math.PI / 2 - 0.45, p.s, 26);
+            L.camEnd(ctx);
+          };
+
+          L.mountChapter({
+            id: ID,
+            t0: T0,
+            dur: T1 - T0,
+            shots: [
+              { a: T0, b: 90.744, draw: shotA },
+              { a: 90.744, b: 94.155, draw: shotB },
+              { a: 94.155, b: 95.762, draw: shotC },
+              { a: 95.762, b: 97.633, draw: shotD },
+              { a: 97.633, b: 99.467, draw: shotE },
+              { a: 99.467, b: T1, draw: shotF },
+            ],
+            post: (ctx) => {
+              grain(ctx);
+              L.vignette(ctx, 0.3, NAVY_D);
+            },
+          });
+        })();
+      </script>
+    </template>
+  </body>
+</html>
