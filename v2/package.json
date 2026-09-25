@@ -1,0 +1,11 @@
+{
+  "name": "let-me-go-mv",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "npx --yes hyperframes@0.8.72 preview",
+    "check": "npx --yes hyperframes@0.8.72 check",
+    "render": "npx --yes hyperframes@0.8.72 render",
+    "publish": "npx --yes hyperframes@0.8.72 publish"
+  }
+}
