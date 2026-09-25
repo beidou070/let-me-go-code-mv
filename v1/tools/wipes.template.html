@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template>
+      <style>
+        #root { position: absolute; inset: 0; pointer-events: none; }
+        #wipes-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+      </style>
+      <div data-hf-id="hf-auxl" id="root" data-composition-id="wipes" data-width="1920" data-height="1080">
+        <canvas data-hf-id="hf-gem1" id="wipes-canvas" width="1920" height="1080"></canvas>
+      </div>
+      <script>
+      (function () {
+        const L = LIB, P = L.P;
+        const W = L.W, H = L.H;
+        const cv = document.getElementById("wipes-canvas");
+        const ctx = cv.getContext("2d");
+        /* chapter-boundary wipes: cover over HALF s before the cut, reveal over HALF s after */
+        const WIPES = [
+          [11.559, "bubbles"], [22.616, "iris"], [37.681, "keys"], [52.029, "bubbles"],
+          [70.59, "keys"], [86.761, "iris"], [101.482, "bubbles"], [113.532, "keys"],
+        ];
+        const HALF = 0.3;
+                const drawWipe = (kind, cover) => {
+          if (cover <= 0) return;
+          if (kind === "bubbles") {
+            // whale-spout bubbles swell up from below until they tile the screen
+            for (let i = 0; i < 36; i++) {
+              const row = Math.floor(i / 9), col = i % 9;
+              const cx = (col + 0.5 + (row % 2) * 0.5) * (W / 8.5) - 60;
+              const cy = H + 60 - row * 330;
+              const delay = L.hash(i * 3.7) * 0.25 + row * 0.1;
+              const k = L.clamp((cover - delay) / (1 - delay));
+              const r = 380 * L.ease.outCubic(k);
+              if (r <= 1) continue;
+              const yy = cy + (1 - k) * 180;
+              ctx.fillStyle = ["#243478", "#1b2766", "#2d3f8a"][i % 3];
+              L.circle(ctx, cx, yy, r);
+              ctx.fill();
+              ctx.strokeStyle = "rgba(191,244,255,0.5)";
+              ctx.lineWidth = 6;
+              ctx.stroke();
+              ctx.fillStyle = "rgba(255,255,255,0.3)";
+              L.circle(ctx, cx - r * 0.35, yy - r * 0.4, r * 0.13);
+              ctx.fill();
+            }
+            if (cover > 0.9) {
+              ctx.fillStyle = L.rgba("#1f2d70", (cover - 0.9) / 0.1);
+              ctx.fillRect(0, 0, W, H);
+            }
+          } else if (kind === "iris") {
+            const r = L.lerp(Math.hypot(W, H) / 2 + 20, 0, L.ease.inOutCubic(cover));
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(0, 0, W, H);
+            ctx.arc(W / 2, H / 2, Math.max(0.01, r), 0, Math.PI * 2, true);
+            ctx.fillStyle = "#0a0f2e";
+            ctx.fill("evenodd");
+            if (r > 2) {
+              ctx.strokeStyle = P.cyan;
+              ctx.lineWidth = 10;
+              ctx.beginPath();
+              ctx.arc(W / 2, H / 2, r, 0, Math.PI * 2);
+              ctx.stroke();
+            }
+            ctx.restore();
+            if (r < 160) CAST.whaleIcon(ctx, W / 2, H / 2 + 10, 3.2 * (1 - r / 160) + 0.01, P.cyan, true);
+          } else {
+            // piano keys drop down in a stagger
+            const n = 16, kw = W / n;
+            for (let i = 0; i < n; i++) {
+              const delay = (i / n) * 0.45;
+              const h = H * L.ease.outCubic(L.clamp((cover - delay) / 0.55));
+              if (h <= 0) continue;
+              ctx.fillStyle = i % 2 ? "#f3f6ff" : "#141c4a";
+              ctx.fillRect(i * kw, 0, kw + 1, h);
+              ctx.fillStyle = i % 2 ? "rgba(26,31,61,0.25)" : "rgba(98,240,255,0.3)";
+              ctx.fillRect(i * kw, Math.max(0, h - 16), kw + 1, Math.min(16, h));
+            }
+          }
+        };
+        const render = (t) => {
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.clearRect(0, 0, W, H);
+          for (const [tb, kind] of WIPES) {
+            if (t < tb - HALF || t > tb + HALF) continue;
+            const cover = t <= tb ? L.ease.inOutSine(L.seg(t, tb - HALF, tb)) : 1 - L.ease.inOutSine(L.seg(t, tb, tb + HALF));
+            drawWipe(kind, cover);
+          }
+        };
+        L.fontsReady.then(() => {
+          const tl = gsap.timeline({ paused: true });
+          const st = { t: 0 };
+          tl.to(st, { t: 124.44, duration: 124.44, ease: "none", onUpdate: () => render(st.t) }, 0);
+          render(0);
+          window.__timelines["wipes"] = tl;
+          if (window.__hfForceTimelineRebind) window.__hfForceTimelineRebind();
+        });
+      })();
+      </script>
+    </template>
+  </body>
+</html>

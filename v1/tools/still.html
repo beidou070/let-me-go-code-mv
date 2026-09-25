@@ -1,0 +1,110 @@
+<!doctype html>
+<!--
+  Chapter test harness (NOT part of the render).
+  still.html?ch=ch3&t=25.2                 -> one full-res frame of chapter ch3 at absolute song time 25.2
+  still.html?ch=ch3&sheet=23,24.5,26,27.5  -> contact sheet (3 columns, 640x360 cells) of those times
+  still.html?ch=ch3&sheet=auto             -> 12 evenly spaced frames across the chapter
+  Add &cols=4 to change columns. Add &karaoke=1 to overlay the lyric band guide.
+-->
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      @font-face { font-family: "Fredoka"; src: url("../assets/fonts/Fredoka.woff2") format("woff2"); font-weight: 300 700; }
+      @font-face { font-family: "Yellowtail"; src: url("../assets/fonts/Yellowtail.woff2") format("woff2"); }
+      @font-face { font-family: "Noto Sans SC"; src: url("../assets/fonts/NotoSansSC-sub.woff2") format("woff2"); font-weight: 100 900; }
+      @font-face { font-family: "JetBrains Mono"; src: url("../assets/fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 800; }
+      @font-face { font-family: "Archivo Black"; src: url("../assets/fonts/ArchivoBlack.woff2") format("woff2"); }
+      @font-face { font-family: "League Gothic"; src: url("../assets/fonts/LeagueGothic.woff2") format("woff2"); }
+      html, body { margin: 0; background: #000; overflow: hidden; }
+      #stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; }
+      #out { position: absolute; left: 0; top: 0; }
+      .lbl { position: absolute; color: #fff; font: 700 20px "JetBrains Mono", monospace; background: rgba(0,0,0,.6); padding: 2px 8px; }
+    </style>
+    <script src="../assets/vendor/gsap.min.js"></script>
+    <script>
+      window.__timelines = {};
+      window.__errs = [];
+      window.addEventListener("error", (e) => window.__errs.push(String(e.message) + " @" + (e.lineno || "?")));
+    </script>
+    <script src="../src/song.js"></script>
+    <script src="../src/lib.js"></script>
+    <script src="../src/cast.js"></script>
+    <script src="../src/props.js"></script>
+  </head>
+  <body>
+    <div id="stage"></div>
+    <canvas id="out" width="1920" height="1080"></canvas>
+    <script>
+      (async () => {
+        const q = new URLSearchParams(location.search);
+        const ch = q.get("ch");
+        const html = await (await fetch(`../compositions/${ch}.html`)).text();
+        const doc = new DOMParser().parseFromString(html, "text/html");
+        const tpl = doc.querySelector("template");
+        const stage = document.getElementById("stage");
+        stage.innerHTML = tpl.innerHTML;
+        // re-create scripts so they execute
+        for (const old of stage.querySelectorAll("script")) {
+          const s = document.createElement("script");
+          s.textContent = old.textContent;
+          old.replaceWith(s);
+        }
+        await LIB.fontsReady;
+        await new Promise((r) => setTimeout(r, 50));
+        const raw = LIB._renderers[ch];
+        const render = (t) => { try { raw(t); } catch (e) { window.__errs.push(`t=${t}: ` + e.message); } };
+        const [c0, c1] = SONG.chapters[Number(ch.replace(/\D/g, "")) - 1];
+        const src = document.getElementById(ch + "-canvas");
+        const out = document.getElementById("out");
+        const octx = out.getContext("2d");
+        const guide = (ctx, sx = 1) => {
+          if (!q.get("karaoke")) return;
+          ctx.fillStyle = "rgba(255,0,80,0.25)";
+          ctx.fillRect(0, LIB.KARAOKE_TOP * sx, 1920 * sx, (1080 - LIB.KARAOKE_TOP) * sx);
+        };
+        if (q.get("sheet")) {
+          let times = q.get("sheet") === "auto" ? Array.from({ length: 12 }, (_, i) => c0 + ((c1 - c0) * (i + 0.5)) / 12) : q.get("sheet").split(",").map(Number);
+          const cols = Number(q.get("cols") || 3), cw = 640, chh = 360;
+          const rows = Math.ceil(times.length / cols);
+          out.width = cw * cols;
+          out.height = chh * rows;
+          document.body.style.width = out.width + "px";
+          stage.style.display = "none";
+          times.forEach((t, i) => {
+            render(t);
+            const x = (i % cols) * cw, y = Math.floor(i / cols) * chh;
+            octx.drawImage(src, x, y, cw, chh);
+            octx.save();
+            octx.translate(x, y);
+            guide(octx, 1 / 3);
+            octx.restore();
+            octx.fillStyle = "rgba(0,0,0,.65)";
+            octx.fillRect(x, y, 96, 28);
+            octx.fillStyle = "#fff";
+            octx.font = '700 20px "JetBrains Mono", monospace';
+            octx.fillText(t.toFixed(2), x + 8, y + 21);
+            octx.strokeStyle = "#000";
+            octx.strokeRect(x, y, cw, chh);
+          });
+        } else {
+          const t = Number(q.get("t") || c0);
+          render(t);
+          stage.style.display = "none";
+          octx.drawImage(src, 0, 0);
+          guide(octx, 1);
+        }
+        if (window.__errs.length) {
+          octx.fillStyle = "rgba(160,0,0,.9)";
+          octx.fillRect(0, 0, out.width, 40 + 30 * window.__errs.length);
+          octx.fillStyle = "#fff";
+          octx.font = '700 24px "JetBrains Mono", monospace';
+          window.__errs.forEach((m, i) => octx.fillText("JS ERROR: " + m, 12, 32 + i * 30));
+        }
+        document.title = "ready";
+      })().catch((e) => {
+        document.body.innerHTML = '<pre style="color:#fff;background:#a00;font:24px monospace;padding:20px">' + String(e && e.stack || e) + "</pre>";
+      });
+    </script>
+  </body>
+</html>

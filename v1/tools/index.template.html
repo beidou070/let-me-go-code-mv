@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <script src="assets/vendor/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Fredoka"; src: url("assets/fonts/Fredoka.woff2") format("woff2"); font-weight: 300 700; }
+      @font-face { font-family: "Yellowtail"; src: url("assets/fonts/Yellowtail.woff2") format("woff2"); }
+      @font-face { font-family: "Noto Sans SC"; src: url("assets/fonts/NotoSansSC-sub.woff2") format("woff2"); font-weight: 100 900; }
+      @font-face { font-family: "JetBrains Mono"; src: url("assets/fonts/JetBrainsMono.woff2") format("woff2"); font-weight: 100 800; }
+      @font-face { font-family: "Archivo Black"; src: url("assets/fonts/ArchivoBlack.woff2") format("woff2"); }
+      @font-face { font-family: "League Gothic"; src: url("assets/fonts/LeagueGothic.woff2") format("woff2"); }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #070b20; }
+      #root { width: 100%; height: 100%; position: relative; overflow: hidden; background: #070b20; }
+      /* font warm-up: every family drawn on canvas is referenced here so it loads before the first seek */
+      #fontwarm { position: absolute; left: 0; top: 0; opacity: 0.01; font-size: 8px; color: #070b20; pointer-events: none; }
+      #fontwarm span:nth-child(1) { font-family: "Fredoka"; font-weight: 600; }
+      #fontwarm span:nth-child(2) { font-family: "Yellowtail"; }
+      #fontwarm span:nth-child(3) { font-family: "Noto Sans SC"; font-weight: 700; }
+      #fontwarm span:nth-child(4) { font-family: "JetBrains Mono"; font-weight: 700; }
+      #fontwarm span:nth-child(5) { font-family: "Archivo Black"; }
+      #fontwarm span:nth-child(6) { font-family: "League Gothic"; }
+    </style>
+    <script src="src/song.js"></script>
+    <script src="src/lib.js"></script>
+    <script src="src/cast.js"></script>
+    <script src="src/props.js"></script>
+  </head>
+  <body>
+    <div data-hf-id="hf-vq4d" id="root" data-composition-id="main" data-start="0" data-duration="124.44" data-width="1920" data-height="1080">
+      <div data-hf-id="hf-8x1t" id="fontwarm"><span data-hf-id="hf-a7gz">Aa</span><span data-hf-id="hf-nqur">Aa</span><span data-hf-id="hf-pbkp">中文</span><span data-hf-id="hf-cd2h">{}</span><span data-hf-id="hf-x3d2">AB</span><span data-hf-id="hf-sr4a">AB</span></div>
+<!--HOSTS-->
+      <div data-hf-id="hf-nyyf" id="wipes" data-composition-id="wipes" data-composition-src="compositions/wipes.html" data-start="0" data-duration="124.44" data-track-index="5" data-width="1920" data-height="1080"></div>
+      <div data-hf-id="hf-i0fw" id="karaoke" data-composition-id="karaoke" data-composition-src="compositions/karaoke.html" data-start="0" data-duration="124.44" data-track-index="6" data-width="1920" data-height="1080"></div>
+      <audio data-hf-id="hf-nth3" id="music" data-timeline-role="music" src="assets/song.mp3" data-start="0" data-duration="124.44" data-track-index="11"></audio>
+    </div>
+    <script>
+      // root timeline: the chapters, wipes and karaoke are sub-compositions with their own timelines
+      window.__timelines["main"] = gsap.timeline({ paused: true });
+    </script>
+  </body>
+</html>
