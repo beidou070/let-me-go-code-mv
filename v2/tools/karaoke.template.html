@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+  <head><meta charset="UTF-8"></head>
+  <body>
+    <template>
+      <style>
+        @font-face { font-family: "Fredoka"; src: url("assets/fonts/Fredoka.woff2") format("woff2"); font-weight: 300 700; }
+        @font-face { font-family: "Noto Sans SC"; src: url("assets/fonts/NotoSansSC-sub.woff2") format("woff2"); font-weight: 100 900; }
+        #root { position: absolute; inset: 0; pointer-events: none; }
+      /* karaoke band */
+      .kline { opacity: 0; position: absolute; left: 0; right: 0; bottom: 22px; display: flex; justify-content: center; pointer-events: none; }
+      .kin {
+        display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 44px 14px; border-radius: 34px;
+        background: rgba(8, 12, 42, 0.7); border: 3px solid rgba(98, 240, 255, 0.35); box-shadow: 0 0 28px rgba(98, 240, 255, 0.18);
+      }
+      .en { position: relative; font-family: "Fredoka", "Noto Sans SC", sans-serif; font-weight: 600; font-size: 52px; line-height: 1.15; white-space: nowrap; }
+      .en .base { color: rgba(233, 240, 255, 0.72); }
+      .en .fill { position: absolute; left: 0; top: 0; width: 0%; overflow: hidden; white-space: nowrap; color: #ffffff; text-shadow: 0 0 14px rgba(98, 240, 255, 0.95), 0 0 2px #62f0ff; }
+      .zh { font-family: "Noto Sans SC", sans-serif; font-weight: 700; font-size: 33px; line-height: 1.2; color: #ffd166; letter-spacing: 0.04em; }
+      </style>
+      <div data-hf-id="hf-1p4n" id="root" data-composition-id="karaoke" data-width="1920" data-height="1080">
+<!--KARAOKE-->
+      </div>
+      <script>
+      (function () {
+        const tl = gsap.timeline({ paused: true });
+        /* pop-in, left-to-right fill sweep, quick fade-out; visibility via opacity on each line */
+        SONG.lyrics.forEach((l, i) => {
+          const line = document.getElementById(`k${i}`);
+          const el = line.querySelector(".kin");
+          const fill = line.querySelector(".fill");
+          const dur = l.end - l.t;
+          const sweep = Math.min(dur * 0.9, l.en.length * 0.13 + 0.7);
+          tl.set(line, { opacity: 1 }, l.t);
+          tl.fromTo(el, { y: 26, scale: 0.96, opacity: 0 }, { y: 0, scale: 1, opacity: 1, duration: 0.22, ease: "back.out(2)", immediateRender: false }, l.t);
+          tl.fromTo(fill, { width: "0%" }, { width: "100%", duration: sweep, ease: "none", immediateRender: false }, l.t);
+          tl.fromTo(el, { opacity: 1 }, { opacity: 0, duration: 0.16, ease: "power1.in", immediateRender: false }, l.end - 0.16);
+          tl.set(line, { opacity: 0 }, l.end);
+        });
+        window.__timelines["karaoke"] = tl;
+      })();
+      </script>
+    </template>
+  </body>
+</html>
